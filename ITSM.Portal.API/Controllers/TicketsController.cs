@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
 
 namespace ITSM.Portal.API.Controllers
@@ -7,33 +9,27 @@ namespace ITSM.Portal.API.Controllers
     [Route("api/[controller]")]
     public class TicketsController : ControllerBase
     {
-        private static List<Ticket> tickets = new List<Ticket>()
+        private readonly ApplicationDbContext _context;
+
+        public TicketsController(ApplicationDbContext context)
         {
-            new Ticket
-            {
-                Id = 1,
-                Title = "VPN Not Working",
-                Description = "Unable to connect to company VPN.",
-                Category = "Network",
-                Priority = "High",
-                Status = "Open"
-            }
-        };
+            _context = context;
+        }
 
 
         // GET: api/Tickets
         [HttpGet]
-        public ActionResult<List<Ticket>> GetTickets()
+        public async Task<ActionResult<List<Ticket>>> GetTickets()
         {
-            return Ok(tickets);
+            return await _context.Tickets.ToListAsync();
         }
 
 
         // GET: api/Tickets/1
         [HttpGet("{id}")]
-        public ActionResult<Ticket> GetTicket(int id)
+        public async Task<ActionResult<Ticket>> GetTicket(int id)
         {
-            var ticket = tickets.FirstOrDefault(t => t.Id == id);
+            var ticket = await _context.Tickets.FindAsync(id);
 
             if (ticket == null)
             {
@@ -46,23 +42,26 @@ namespace ITSM.Portal.API.Controllers
 
         // POST: api/Tickets
         [HttpPost]
-        public ActionResult<Ticket> CreateTicket(Ticket ticket)
+        public async Task<ActionResult<Ticket>> CreateTicket(Ticket ticket)
         {
-            ticket.Id = tickets.Count + 1;
             ticket.CreatedDate = DateTime.Now;
 
-            tickets.Add(ticket);
+            _context.Tickets.Add(ticket);
+            await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetTicket),
-                new { id = ticket.Id }, ticket);
+            return CreatedAtAction(
+                nameof(GetTicket),
+                new { id = ticket.Id },
+                ticket
+            );
         }
 
 
         // PUT: api/Tickets/1
         [HttpPut("{id}")]
-        public IActionResult UpdateTicket(int id, Ticket updatedTicket)
+        public async Task<IActionResult> UpdateTicket(int id, Ticket updatedTicket)
         {
-            var ticket = tickets.FirstOrDefault(t => t.Id == id);
+            var ticket = await _context.Tickets.FindAsync(id);
 
             if (ticket == null)
             {
@@ -75,23 +74,27 @@ namespace ITSM.Portal.API.Controllers
             ticket.Priority = updatedTicket.Priority;
             ticket.Status = updatedTicket.Status;
 
+            await _context.SaveChangesAsync();
+
             return NoContent();
         }
 
 
+        // DELETE: api/Tickets/1
         [HttpDelete("{id}")]
-        public IActionResult DeleteTicket(int id)
+        public async Task<IActionResult> DeleteTicket(int id)
         {
-            var ticket = tickets.FirstOrDefault(t => t.Id == id);
+            var ticket = await _context.Tickets.FindAsync(id);
 
             if (ticket == null)
             {
-                return NotFound($"Ticket with ID {id} was not found.");
+                return NotFound();
             }
 
-            tickets.Remove(ticket);
+            _context.Tickets.Remove(ticket);
+            await _context.SaveChangesAsync();
 
-            return Ok($"Ticket {id} deleted successfully.");
+            return NoContent();
         }
     }
 }
