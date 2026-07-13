@@ -14,6 +14,12 @@
 
         public string Status { get; set; } = "Open";
 
+        public string RequestedBy { get; set; } = string.Empty;
+
+        public string AssignedTo { get; set; } = string.Empty;
+
         public DateTime CreatedDate { get; set; } = DateTime.Now;
+
+        public List<TicketComment> Comments { get; set; } = new();
     }
 }

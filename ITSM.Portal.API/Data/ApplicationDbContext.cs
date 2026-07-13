@@ -11,5 +11,7 @@ namespace ITSM.Portal.API.Data
         }
 
         public DbSet<Ticket> Tickets { get; set; }
+
+        public DbSet<TicketComment> TicketComments { get; set; }
     }
 }
