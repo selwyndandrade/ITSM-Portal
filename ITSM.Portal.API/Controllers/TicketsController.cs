@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
-using System.Security.Claims;
 
 namespace ITSM.Portal.API.Controllers
 {
@@ -13,11 +13,17 @@ namespace ITSM.Portal.API.Controllers
     public class TicketsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public TicketsController(ApplicationDbContext context)
+
+        public TicketsController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
+
 
 
         // GET: api/tickets
@@ -25,10 +31,48 @@ namespace ITSM.Portal.API.Controllers
         public async Task<IActionResult> GetTickets()
         {
             var tickets = await _context.Tickets
+                .Include(t => t.Comments)
                 .ToListAsync();
 
-            return Ok(tickets);
+
+            var result = new List<object>();
+
+
+            foreach (var ticket in tickets)
+            {
+                var createdUser = ticket.CreatedBy != null
+                    ? await _userManager.FindByIdAsync(ticket.CreatedBy)
+                    : null;
+
+
+                var assignedUser = ticket.AssignedTo != null
+                    ? await _userManager.FindByIdAsync(ticket.AssignedTo)
+                    : null;
+
+
+
+                result.Add(new
+                {
+                    ticket.Id,
+                    ticket.Title,
+                    ticket.Description,
+                    ticket.Status,
+                    ticket.Priority,
+                    ticket.CreatedDate,
+
+                    CreatedBy = createdUser?.Email,
+
+                    AssignedTo = assignedUser?.Email,
+
+
+                    Comments = ticket.Comments
+                });
+            }
+
+
+            return Ok(result);
         }
+
 
 
 
@@ -37,7 +81,9 @@ namespace ITSM.Portal.API.Controllers
         public async Task<IActionResult> GetTicket(int id)
         {
             var ticket = await _context.Tickets
+                .Include(t => t.Comments)
                 .FirstOrDefaultAsync(t => t.Id == id);
+
 
 
             if (ticket == null)
@@ -46,41 +92,59 @@ namespace ITSM.Portal.API.Controllers
             }
 
 
-            return Ok(ticket);
+
+            var createdUser = ticket.CreatedBy != null
+                ? await _userManager.FindByIdAsync(ticket.CreatedBy)
+                : null;
+
+
+            var assignedUser = ticket.AssignedTo != null
+                ? await _userManager.FindByIdAsync(ticket.AssignedTo)
+                : null;
+
+
+
+            return Ok(new
+            {
+                ticket.Id,
+                ticket.Title,
+                ticket.Description,
+                ticket.Status,
+                ticket.Priority,
+                ticket.CreatedDate,
+
+                CreatedBy = createdUser?.Email,
+
+                AssignedTo = assignedUser?.Email,
+
+
+                Comments = ticket.Comments
+            });
         }
 
 
 
+
+       
         // POST: api/tickets
         [HttpPost]
         public async Task<IActionResult> CreateTicket(Ticket ticket)
         {
             ticket.CreatedDate = DateTime.UtcNow;
 
+            // Capture the logged-in user from JWT
+            var user = await _userManager.GetUserAsync(User);
+
+            ticket.CreatedBy = user?.Id;
 
             if (string.IsNullOrEmpty(ticket.Status))
             {
                 ticket.Status = "Open";
             }
 
-
-            // Get logged-in user from JWT token
-            ticket.CreatedBy =
-                User.FindFirst(ClaimTypes.Email)?.Value
-                ??
-                User.FindFirst("email")?.Value
-                ??
-                User.FindFirst("sub")?.Value;
-
-
-            // New tickets start unassigned
-            ticket.AssignedTo = null;
-
-
             _context.Tickets.Add(ticket);
 
             await _context.SaveChangesAsync();
-
 
             return CreatedAtAction(
                 nameof(GetTicket),
@@ -91,6 +155,45 @@ namespace ITSM.Portal.API.Controllers
                 ticket
             );
         }
+
+
+
+
+
+        // PUT: api/tickets/{id}/assign
+        [HttpPut("{id}/assign")]
+        public async Task<IActionResult> AssignTicket(
+            int id,
+            [FromBody] string userId)
+        {
+            var ticket = await _context.Tickets
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+
+
+            if (ticket == null)
+            {
+                return NotFound();
+            }
+
+
+
+            ticket.AssignedTo = userId;
+
+
+            await _context.SaveChangesAsync();
+
+
+
+            return Ok(new
+            {
+                message = "Ticket assigned successfully",
+                ticketId = ticket.Id,
+                assignedTo = userId
+            });
+        }
+
+
 
 
 
@@ -110,6 +213,7 @@ namespace ITSM.Portal.API.Controllers
             var existingTicket = await _context.Tickets.FindAsync(id);
 
 
+
             if (existingTicket == null)
             {
                 return NotFound();
@@ -117,21 +221,19 @@ namespace ITSM.Portal.API.Controllers
 
 
             existingTicket.Title = ticket.Title;
-
             existingTicket.Description = ticket.Description;
-
             existingTicket.Status = ticket.Status;
-
-            existingTicket.CreatedBy = ticket.CreatedBy;
-
-            existingTicket.AssignedTo = ticket.AssignedTo;
+            existingTicket.Priority = ticket.Priority;
 
 
             await _context.SaveChangesAsync();
 
 
+
             return NoContent();
         }
+
+
 
 
 
@@ -142,6 +244,7 @@ namespace ITSM.Portal.API.Controllers
             var ticket = await _context.Tickets.FindAsync(id);
 
 
+
             if (ticket == null)
             {
                 return NotFound();
@@ -150,7 +253,9 @@ namespace ITSM.Portal.API.Controllers
 
             _context.Tickets.Remove(ticket);
 
+
             await _context.SaveChangesAsync();
+
 
 
             return NoContent();
