@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
+using System.Security.Claims;
 
 namespace ITSM.Portal.API.Controllers
 {
@@ -63,6 +64,19 @@ namespace ITSM.Portal.API.Controllers
             }
 
 
+            // Get logged-in user from JWT token
+            ticket.CreatedBy =
+                User.FindFirst(ClaimTypes.Email)?.Value
+                ??
+                User.FindFirst("email")?.Value
+                ??
+                User.FindFirst("sub")?.Value;
+
+
+            // New tickets start unassigned
+            ticket.AssignedTo = null;
+
+
             _context.Tickets.Add(ticket);
 
             await _context.SaveChangesAsync();
@@ -103,9 +117,13 @@ namespace ITSM.Portal.API.Controllers
 
 
             existingTicket.Title = ticket.Title;
+
             existingTicket.Description = ticket.Description;
+
             existingTicket.Status = ticket.Status;
+
             existingTicket.CreatedBy = ticket.CreatedBy;
+
             existingTicket.AssignedTo = ticket.AssignedTo;
 
 
