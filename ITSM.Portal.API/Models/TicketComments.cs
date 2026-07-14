@@ -1,19 +1,20 @@
-﻿namespace ITSM.Portal.API.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ITSM.Portal.API.Models
 {
     public class TicketComment
     {
         public int Id { get; set; }
 
+        [Required]
         public string Comment { get; set; } = string.Empty;
 
         public string CreatedBy { get; set; } = string.Empty;
 
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
-
-        // Relationship
         public int TicketId { get; set; }
 
-        public Ticket? Ticket { get; set; }
+        public Ticket Ticket { get; set; } = null!;
     }
 }

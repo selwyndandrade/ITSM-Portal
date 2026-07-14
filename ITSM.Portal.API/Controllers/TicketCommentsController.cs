@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ITSM.Portal.API.Data;
+﻿using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ITSM.Portal.API.Controllers
 {
@@ -16,12 +16,16 @@ namespace ITSM.Portal.API.Controllers
             _context = context;
         }
 
-
-        // GET: api/TicketComments
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<TicketComment>>> GetComments()
+        // GET: api/TicketComments/ticket/1
+        [HttpGet("ticket/{ticketId}")]
+        public async Task<ActionResult<IEnumerable<TicketComment>>> GetTicketComments(int ticketId)
         {
-            return await _context.TicketComments.ToListAsync();
+            var comments = await _context.TicketComments
+                .Where(c => c.TicketId == ticketId)
+                .OrderByDescending(c => c.CreatedDate)
+                .ToListAsync();
+
+            return Ok(comments);
         }
 
 
@@ -29,14 +33,15 @@ namespace ITSM.Portal.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<TicketComment>> GetComment(int id)
         {
-            var comment = await _context.TicketComments.FindAsync(id);
+            var comment = await _context.TicketComments
+                .FindAsync(id);
 
             if (comment == null)
             {
                 return NotFound();
             }
 
-            return comment;
+            return Ok(comment);
         }
 
 
@@ -44,7 +49,7 @@ namespace ITSM.Portal.API.Controllers
         [HttpPost]
         public async Task<ActionResult<TicketComment>> CreateComment(TicketComment comment)
         {
-            comment.CreatedDate = DateTime.Now;
+            comment.CreatedDate = DateTime.UtcNow;
 
             _context.TicketComments.Add(comment);
 
@@ -58,11 +63,29 @@ namespace ITSM.Portal.API.Controllers
         }
 
 
+        // PUT: api/TicketComments/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateComment(int id, TicketComment comment)
+        {
+            if (id != comment.Id)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(comment).State = EntityState.Modified;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+
         // DELETE: api/TicketComments/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComment(int id)
         {
-            var comment = await _context.TicketComments.FindAsync(id);
+            var comment = await _context.TicketComments
+                .FindAsync(id);
 
             if (comment == null)
             {
