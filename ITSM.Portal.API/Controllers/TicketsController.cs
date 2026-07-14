@@ -235,7 +235,52 @@ namespace ITSM.Portal.API.Controllers
 
 
 
+        // PUT: api/tickets/{id}/status
+        [HttpPut("{id}/status")]
+        public async Task<IActionResult> UpdateTicketStatus(
+            int id,
+            [FromBody] string status)
+        {
+            var ticket = await _context.Tickets.FindAsync(id);
 
+            if (ticket == null)
+            {
+                return NotFound();
+            }
+
+
+            var allowedStatuses = new[]
+            {
+        "Open",
+        "Assigned",
+        "In Progress",
+        "Pending",
+        "Resolved",
+        "Closed"
+    };
+
+
+            if (!allowedStatuses.Contains(status))
+            {
+                return BadRequest(new
+                {
+                    message = "Invalid ticket status"
+                });
+            }
+
+
+            ticket.Status = status;
+
+            await _context.SaveChangesAsync();
+
+
+            return Ok(new
+            {
+                message = "Ticket status updated",
+                ticketId = ticket.Id,
+                status = ticket.Status
+            });
+        }
 
         // DELETE: api/tickets/5
         [HttpDelete("{id}")]

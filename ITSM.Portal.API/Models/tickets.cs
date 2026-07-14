@@ -30,5 +30,8 @@ namespace ITSM.Portal.API.Models
 
 
         public ICollection<TicketComment>? Comments { get; set; }
+        public string? UpdatedBy { get; set; }
+
+        public DateTime? UpdatedDate { get; set; }
     }
 }
