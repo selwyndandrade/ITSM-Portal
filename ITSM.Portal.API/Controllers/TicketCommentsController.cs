@@ -1,102 +1,118 @@
 ﻿using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace ITSM.Portal.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class TicketCommentsController : ControllerBase
+    [Route("api/[controller]")]
+    [Authorize]
+    public class TicketController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
 
-        public TicketCommentsController(ApplicationDbContext context)
+        public TicketController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // GET: api/TicketComments/ticket/1
-        [HttpGet("ticket/{ticketId}")]
-        public async Task<ActionResult<IEnumerable<TicketComment>>> GetTicketComments(int ticketId)
+
+        [HttpGet]
+        public async Task<IActionResult> GetTickets()
         {
-            var comments = await _context.TicketComments
-                .Where(c => c.TicketId == ticketId)
-                .OrderByDescending(c => c.CreatedDate)
+            var tickets = await _context.Tickets
+                .Include(t => t.Comments)
                 .ToListAsync();
 
-            return Ok(comments);
+            return Ok(tickets);
         }
 
 
-        // GET: api/TicketComments/5
+
         [HttpGet("{id}")]
-        public async Task<ActionResult<TicketComment>> GetComment(int id)
+        public async Task<IActionResult> GetTicket(int id)
         {
-            var comment = await _context.TicketComments
-                .FindAsync(id);
+            var ticket = await _context.Tickets
+                .Include(t => t.Comments)
+                .FirstOrDefaultAsync(t => t.Id == id);
 
-            if (comment == null)
+
+            if (ticket == null)
             {
                 return NotFound();
             }
 
-            return Ok(comment);
+
+            return Ok(ticket);
         }
 
 
-        // POST: api/TicketComments
+
         [HttpPost]
-        public async Task<ActionResult<TicketComment>> CreateComment(TicketComment comment)
+        public async Task<IActionResult> CreateTicket(Ticket ticket)
         {
-            comment.CreatedDate = DateTime.UtcNow;
+            ticket.CreatedDate = DateTime.UtcNow;
 
-            _context.TicketComments.Add(comment);
+            _context.Tickets.Add(ticket);
 
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(
-                nameof(GetComment),
-                new { id = comment.Id },
-                comment
-            );
+
+            return Ok(ticket);
         }
 
 
-        // PUT: api/TicketComments/5
+
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateComment(int id, TicketComment comment)
+        public async Task<IActionResult> UpdateTicket(int id, Ticket ticket)
         {
-            if (id != comment.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(comment).State = EntityState.Modified;
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
+            var existingTicket = await _context.Tickets.FindAsync(id);
 
 
-        // DELETE: api/TicketComments/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteComment(int id)
-        {
-            var comment = await _context.TicketComments
-                .FindAsync(id);
-
-            if (comment == null)
+            if (existingTicket == null)
             {
                 return NotFound();
             }
 
-            _context.TicketComments.Remove(comment);
+
+            existingTicket.Title = ticket.Title;
+            existingTicket.Description = ticket.Description;
+            existingTicket.Status = ticket.Status;
+            existingTicket.Priority = ticket.Priority;
+            existingTicket.AssignedTo = ticket.AssignedTo;
+
 
             await _context.SaveChangesAsync();
 
-            return NoContent();
+
+            return Ok(existingTicket);
+        }
+
+
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteTicket(int id)
+        {
+            var ticket = await _context.Tickets.FindAsync(id);
+
+
+            if (ticket == null)
+            {
+                return NotFound();
+            }
+
+
+            _context.Tickets.Remove(ticket);
+
+            await _context.SaveChangesAsync();
+
+
+            return Ok(new
+            {
+                message = "Ticket deleted"
+            });
         }
     }
 }

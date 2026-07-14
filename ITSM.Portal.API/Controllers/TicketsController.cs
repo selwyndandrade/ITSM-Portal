@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
 
@@ -7,6 +8,7 @@ namespace ITSM.Portal.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TicketsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -19,11 +21,9 @@ namespace ITSM.Portal.API.Controllers
 
         // GET: api/tickets
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Ticket>>> GetTickets()
+        public async Task<IActionResult> GetTickets()
         {
             var tickets = await _context.Tickets
-                .Include(t => t.CreatedBy)
-                .Include(t => t.AssignedTo)
                 .ToListAsync();
 
             return Ok(tickets);
@@ -33,11 +33,9 @@ namespace ITSM.Portal.API.Controllers
 
         // GET: api/tickets/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Ticket>> GetTicket(int id)
+        public async Task<IActionResult> GetTicket(int id)
         {
             var ticket = await _context.Tickets
-                .Include(t => t.CreatedBy)
-                .Include(t => t.AssignedTo)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
 
@@ -54,9 +52,10 @@ namespace ITSM.Portal.API.Controllers
 
         // POST: api/tickets
         [HttpPost]
-        public async Task<ActionResult<Ticket>> CreateTicket(Ticket ticket)
+        public async Task<IActionResult> CreateTicket(Ticket ticket)
         {
-            ticket.CreatedDate = DateTime.Now;
+            ticket.CreatedDate = DateTime.UtcNow;
+
 
             if (string.IsNullOrEmpty(ticket.Status))
             {
@@ -71,7 +70,10 @@ namespace ITSM.Portal.API.Controllers
 
             return CreatedAtAction(
                 nameof(GetTicket),
-                new { id = ticket.Id },
+                new
+                {
+                    id = ticket.Id
+                },
                 ticket
             );
         }
@@ -84,14 +86,27 @@ namespace ITSM.Portal.API.Controllers
             int id,
             Ticket ticket)
         {
+
             if (id != ticket.Id)
             {
                 return BadRequest();
             }
 
 
-            _context.Entry(ticket).State =
-                EntityState.Modified;
+            var existingTicket = await _context.Tickets.FindAsync(id);
+
+
+            if (existingTicket == null)
+            {
+                return NotFound();
+            }
+
+
+            existingTicket.Title = ticket.Title;
+            existingTicket.Description = ticket.Description;
+            existingTicket.Status = ticket.Status;
+            existingTicket.CreatedBy = ticket.CreatedBy;
+            existingTicket.AssignedTo = ticket.AssignedTo;
 
 
             await _context.SaveChangesAsync();
