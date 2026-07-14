@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
-using ITSM.Portal.API.DTOs;
 
 namespace ITSM.Portal.API.Controllers
 {
@@ -25,28 +24,6 @@ namespace ITSM.Portal.API.Controllers
         public async Task<IActionResult> GetTickets()
         {
             var tickets = await _context.Tickets
-                .Include(t => t.Comments)
-                .Select(t => new TicketDto
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Description = t.Description,
-                    Status = t.Status,
-                    Priority = t.Priority,
-                    CreatedDate = t.CreatedDate,
-                    CreatedBy = t.CreatedBy,
-                    AssignedTo = t.AssignedTo,
-
-                    Comments = t.Comments!
-                        .Select(c => new TicketCommentDto
-                        {
-                            Id = c.Id,
-                            Comment = c.Comment,
-                            CreatedBy = c.CreatedBy,
-                            CreatedDate = c.CreatedDate
-                        })
-                        .ToList()
-                })
                 .ToListAsync();
 
             return Ok(tickets);
@@ -59,30 +36,7 @@ namespace ITSM.Portal.API.Controllers
         public async Task<IActionResult> GetTicket(int id)
         {
             var ticket = await _context.Tickets
-                .Include(t => t.Comments)
-                .Where(t => t.Id == id)
-                .Select(t => new TicketDto
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Description = t.Description,
-                    Status = t.Status,
-                    Priority = t.Priority,
-                    CreatedDate = t.CreatedDate,
-                    CreatedBy = t.CreatedBy,
-                    AssignedTo = t.AssignedTo,
-
-                    Comments = t.Comments!
-                        .Select(c => new TicketCommentDto
-                        {
-                            Id = c.Id,
-                            Comment = c.Comment,
-                            CreatedBy = c.CreatedBy,
-                            CreatedDate = c.CreatedDate
-                        })
-                        .ToList()
-                })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(t => t.Id == id);
 
 
             if (ticket == null)
@@ -151,7 +105,6 @@ namespace ITSM.Portal.API.Controllers
             existingTicket.Title = ticket.Title;
             existingTicket.Description = ticket.Description;
             existingTicket.Status = ticket.Status;
-            existingTicket.Priority = ticket.Priority;
             existingTicket.CreatedBy = ticket.CreatedBy;
             existingTicket.AssignedTo = ticket.AssignedTo;
 

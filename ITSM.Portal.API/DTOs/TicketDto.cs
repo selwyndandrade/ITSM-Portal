@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ITSM.Portal.API.DTOs
+﻿namespace ITSM.Portal.API.DTOs
 {
     public class TicketDto
     {
@@ -17,10 +14,13 @@ namespace ITSM.Portal.API.DTOs
 
         public DateTime CreatedDate { get; set; }
 
+
         public string? CreatedBy { get; set; }
 
         public string? AssignedTo { get; set; }
 
-        public List<TicketCommentDto> Comments { get; set; } = new();
+
+        public List<TicketCommentDto> Comments { get; set; }
+            = new List<TicketCommentDto>();
     }
 }
