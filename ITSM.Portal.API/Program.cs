@@ -14,7 +14,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -66,6 +67,19 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
 
         ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Read token from cookie named 'jwt'
+            var token = context.Request.Cookies["jwt"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 

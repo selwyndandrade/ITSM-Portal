@@ -1,6 +1,7 @@
 ﻿using ITSM.Portal.API.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -91,13 +92,53 @@ namespace ITSM.Portal.API.Controllers
 
             var token = GenerateJwtToken(user);
 
+            // Set JWT as an HttpOnly cookie
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddHours(2),
+                Path = "/"
+            };
+
+            Response.Cookies.Append("jwt", token, cookieOptions);
+
             return Ok(new
             {
                 message = "Login successful",
-                token,
                 email = user.Email,
                 role = user.Role
             });
+        }
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            // Remove the cookie
+            if (Request.Cookies.ContainsKey("jwt"))
+            {
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = Request.IsHttps,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddDays(-1),
+                    Path = "/"
+                };
+                Response.Cookies.Append("jwt", string.Empty, cookieOptions);
+            }
+
+            return Ok(new { message = "Logged out" });
+        }
+
+        [HttpGet("me")]
+        public async Task<IActionResult> Me()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            return Ok(new { id = user.Id, email = user.Email, role = user.Role });
         }
 
         private string GenerateJwtToken(ApplicationUser user)

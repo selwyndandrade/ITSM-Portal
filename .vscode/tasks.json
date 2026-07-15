@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Backend",
+      "type": "shell",
+      "command": "dotnet run --project \"${workspaceFolder}/ITSM.Portal.API\"",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "Run Frontend",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/itsm-portal-client"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run Both",
+      "dependsOn": ["Run Backend", "Run Frontend"],
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": "echo Running backend and frontend...",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

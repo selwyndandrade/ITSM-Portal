@@ -1,0 +1,22 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: #f5f7fa;
+}
+.auth-container, .tickets-container, .ticket-detail {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  max-width: 900px;
+  margin: 16px auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+form label {
+  display: block;
+  margin-bottom: 8px;
+}
+input { display: block; padding: 8px; width: 100%; margin-top: 4px; margin-bottom: 12px; }
+button { padding: 8px 12px; cursor: pointer; }
+.ticket { padding: 8px; border-bottom: 1px solid #eee; }
+.error { color: #b00020; margin-bottom: 8px; }

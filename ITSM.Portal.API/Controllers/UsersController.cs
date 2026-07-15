@@ -2,6 +2,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using ITSM.Portal.API.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ITSM.Portal.API.Controllers
 {
@@ -12,27 +15,28 @@ namespace ITSM.Portal.API.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
 
-
         public UsersController(UserManager<ApplicationUser> userManager)
         {
             _userManager = userManager;
         }
 
-
-
-        // GET: api/users
+        // GET: api/users?query=term
         [HttpGet]
-        public IActionResult GetUsers()
+        public async Task<IActionResult> GetUsers([FromQuery] string? query)
         {
-            var users = _userManager.Users
-                .Select(u => new
-                {
-                    id = u.Id,
-                    email = u.Email,
-                    role = u.Role
-                })
-                .ToList();
+            var usersQuery = _userManager.Users.AsQueryable();
 
+            if (!string.IsNullOrEmpty(query))
+            {
+                var q = query.Trim().ToLower();
+                usersQuery = usersQuery.Where(u => u.Email != null && u.Email.ToLower().Contains(q));
+            }
+
+            var users = await usersQuery
+                .OrderBy(u => u.Email)
+                .Select(u => new { id = u.Id, email = u.Email })
+                .Take(50)
+                .ToListAsync();
 
             return Ok(users);
         }

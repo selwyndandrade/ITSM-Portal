@@ -1,6 +1,8 @@
 ﻿using ITSM.Portal.API.Data;
+using ITSM.Portal.API.DTOs;
 using ITSM.Portal.API.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,110 +11,56 @@ namespace ITSM.Portal.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class TicketController : ControllerBase
+    public class TicketCommentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public TicketController(ApplicationDbContext context)
+        public TicketCommentsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
-
+        // GET: api/ticketcomments?ticketId=5
         [HttpGet]
-        public async Task<IActionResult> GetTickets()
+        public async Task<IActionResult> GetComments([FromQuery] int ticketId)
         {
-            var tickets = await _context.Tickets
-                .Include(t => t.Comments)
+            if (ticketId <= 0) return BadRequest();
+
+            var comments = await _context.TicketComments
+                .Where(c => c.TicketId == ticketId)
+                .OrderBy(c => c.CreatedDate)
+                .Select(c => new TicketCommentDto { Id = c.Id, Comment = c.Comment, CreatedBy = c.CreatedBy, CreatedDate = c.CreatedDate })
                 .ToListAsync();
 
-            return Ok(tickets);
+            return Ok(comments);
         }
 
-
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetTicket(int id)
-        {
-            var ticket = await _context.Tickets
-                .Include(t => t.Comments)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-
-            if (ticket == null)
-            {
-                return NotFound();
-            }
-
-
-            return Ok(ticket);
-        }
-
-
-
+        // POST: api/ticketcomments
         [HttpPost]
-        public async Task<IActionResult> CreateTicket(Ticket ticket)
+        public async Task<IActionResult> CreateComment([FromBody] TicketComment model)
         {
-            ticket.CreatedDate = DateTime.UtcNow;
+            if (model == null) return BadRequest();
+            if (string.IsNullOrWhiteSpace(model.Comment)) return BadRequest(new { message = "Comment is required" });
+            if (model.TicketId <= 0) return BadRequest(new { message = "TicketId is required" });
 
-            _context.Tickets.Add(ticket);
+            var user = await _userManager.GetUserAsync(User);
 
+            var comment = new TicketComment
+            {
+                Comment = model.Comment,
+                TicketId = model.TicketId,
+                CreatedBy = user?.Email ?? string.Empty,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            _context.TicketComments.Add(comment);
             await _context.SaveChangesAsync();
 
+            var dto = new TicketCommentDto { Id = comment.Id, Comment = comment.Comment, CreatedBy = comment.CreatedBy, CreatedDate = comment.CreatedDate };
 
-            return Ok(ticket);
-        }
-
-
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTicket(int id, Ticket ticket)
-        {
-            var existingTicket = await _context.Tickets.FindAsync(id);
-
-
-            if (existingTicket == null)
-            {
-                return NotFound();
-            }
-
-
-            existingTicket.Title = ticket.Title;
-            existingTicket.Description = ticket.Description;
-            existingTicket.Status = ticket.Status;
-            existingTicket.Priority = ticket.Priority;
-            existingTicket.AssignedTo = ticket.AssignedTo;
-
-
-            await _context.SaveChangesAsync();
-
-
-            return Ok(existingTicket);
-        }
-
-
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTicket(int id)
-        {
-            var ticket = await _context.Tickets.FindAsync(id);
-
-
-            if (ticket == null)
-            {
-                return NotFound();
-            }
-
-
-            _context.Tickets.Remove(ticket);
-
-            await _context.SaveChangesAsync();
-
-
-            return Ok(new
-            {
-                message = "Ticket deleted"
-            });
+            return Ok(dto);
         }
     }
 }

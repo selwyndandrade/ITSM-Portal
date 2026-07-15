@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Core Launch (API)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "Run Backend",
+      "program": "${workspaceFolder}/ITSM.Portal.API/bin/Debug/net8.0/ITSM.Portal.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/ITSM.Portal.API",
+      "stopAtEntry": false,
+      "console": "internalConsole"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run API + Frontend",
+      "configurations": [".NET Core Launch (API)"],
+      "preLaunchTask": "Run Frontend"
+    }
+  ]
+}

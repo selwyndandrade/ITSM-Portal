@@ -26,51 +26,65 @@ namespace ITSM.Portal.API.Controllers
 
 
 
-        // GET: api/tickets
+        // GET: api/tickets?page=1&pageSize=20
         [HttpGet]
-        public async Task<IActionResult> GetTickets()
+        public async Task<IActionResult> GetTickets(int page = 1, int pageSize = 20)
         {
-            var tickets = await _context.Tickets
+            if (page <= 0) page = 1;
+            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+
+            var query = _context.Tickets
                 .Include(t => t.Comments)
+                .OrderByDescending(t => t.CreatedDate)
+                .AsQueryable();
+
+            var totalCount = await query.CountAsync();
+
+            var tickets = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Title,
+                    t.Description,
+                    t.Status,
+                    t.Priority,
+                    t.CreatedDate,
+                    CreatedById = t.CreatedBy,
+                    AssignedToId = t.AssignedTo,
+                    Comments = t.Comments.Select(c => new { c.Id, c.Comment, c.CreatedBy, c.CreatedDate, c.TicketId })
+                })
                 .ToListAsync();
 
+            // Collect distinct user ids referenced in page
+            var userIds = tickets.SelectMany(t => new[] { t.CreatedById, t.AssignedToId })
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct()
+                .ToList();
 
-            var result = new List<object>();
-
-
-            foreach (var ticket in tickets)
+            var userDict = new Dictionary<string, string?>();
+            if (userIds.Any())
             {
-                var createdUser = ticket.CreatedBy != null
-                    ? await _userManager.FindByIdAsync(ticket.CreatedBy)
-                    : null;
-
-
-                var assignedUser = ticket.AssignedTo != null
-                    ? await _userManager.FindByIdAsync(ticket.AssignedTo)
-                    : null;
-
-
-
-                result.Add(new
-                {
-                    ticket.Id,
-                    ticket.Title,
-                    ticket.Description,
-                    ticket.Status,
-                    ticket.Priority,
-                    ticket.CreatedDate,
-
-                    CreatedBy = createdUser?.Email,
-
-                    AssignedTo = assignedUser?.Email,
-
-
-                    Comments = ticket.Comments
-                });
+                userDict = await _userManager.Users
+                    .Where(u => userIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id, u => u.Email as string);
             }
 
+            var result = tickets.Select(t => new TicketDto
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                Priority = t.Priority,
+                CreatedDate = t.CreatedDate,
+                CreatedBy = t.CreatedById != null && userDict.ContainsKey(t.CreatedById) ? userDict[t.CreatedById] : null,
+                AssignedTo = t.AssignedToId != null && userDict.ContainsKey(t.AssignedToId) ? userDict[t.AssignedToId] : null,
+                Comments = t.Comments.Select(c => new CommentDto { Id = c.Id, Comment = c.Comment, CreatedBy = c.CreatedBy, CreatedDate = c.CreatedDate, TicketId = c.TicketId }).ToList()
+            }).ToList();
 
-            return Ok(result);
+            return Ok(new { items = result, totalCount, page, pageSize });
         }
 
 
@@ -84,42 +98,32 @@ namespace ITSM.Portal.API.Controllers
                 .Include(t => t.Comments)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
-
-
             if (ticket == null)
             {
                 return NotFound();
             }
 
-
-
-            var createdUser = ticket.CreatedBy != null
-                ? await _userManager.FindByIdAsync(ticket.CreatedBy)
-                : null;
-
-
-            var assignedUser = ticket.AssignedTo != null
-                ? await _userManager.FindByIdAsync(ticket.AssignedTo)
-                : null;
-
-
-
-            return Ok(new
+            var ids = new[] { ticket.CreatedBy, ticket.AssignedTo }.Where(i => !string.IsNullOrEmpty(i)).Distinct().ToList();
+            var userDict = new Dictionary<string, string?>();
+            if (ids.Any())
             {
-                ticket.Id,
-                ticket.Title,
-                ticket.Description,
-                ticket.Status,
-                ticket.Priority,
-                ticket.CreatedDate,
+                userDict = await _userManager.Users.Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Email as string);
+            }
 
-                CreatedBy = createdUser?.Email,
+            var dto = new TicketDto
+            {
+                Id = ticket.Id,
+                Title = ticket.Title,
+                Description = ticket.Description,
+                Status = ticket.Status,
+                Priority = ticket.Priority,
+                CreatedDate = ticket.CreatedDate,
+                CreatedBy = ticket.CreatedBy != null && userDict.ContainsKey(ticket.CreatedBy) ? userDict[ticket.CreatedBy] : null,
+                AssignedTo = ticket.AssignedTo != null && userDict.ContainsKey(ticket.AssignedTo) ? userDict[ticket.AssignedTo] : null,
+                Comments = ticket.Comments?.Select(c => new CommentDto { Id = c.Id, Comment = c.Comment, CreatedBy = c.CreatedBy, CreatedDate = c.CreatedDate, TicketId = c.TicketId }).ToList()
+            };
 
-                AssignedTo = assignedUser?.Email,
-
-
-                Comments = ticket.Comments
-            });
+            return Ok(dto);
         }
 
 
@@ -146,14 +150,21 @@ namespace ITSM.Portal.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(
-                nameof(GetTicket),
-                new
-                {
-                    id = ticket.Id
-                },
-                ticket
-            );
+            // Build DTO to return
+            var dto = new TicketDto
+            {
+                Id = ticket.Id,
+                Title = ticket.Title,
+                Description = ticket.Description,
+                Status = ticket.Status,
+                Priority = ticket.Priority,
+                CreatedDate = ticket.CreatedDate,
+                CreatedBy = user?.Email,
+                AssignedTo = null,
+                Comments = new List<CommentDto>()
+            };
+
+            return CreatedAtAction(nameof(GetTicket), new { id = ticket.Id }, dto);
         }
 
 
