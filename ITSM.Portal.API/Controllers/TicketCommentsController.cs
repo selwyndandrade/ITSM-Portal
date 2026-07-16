@@ -39,8 +39,9 @@ namespace ITSM.Portal.API.Controllers
 
         // POST: api/ticketcomments
         [HttpPost]
-        public async Task<IActionResult> CreateComment([FromBody] TicketComment model)
+        public async Task<IActionResult> CreateComment([FromBody] TicketCommentCreateDto model)
         {
+
             if (model == null) return BadRequest();
             if (string.IsNullOrWhiteSpace(model.Comment)) return BadRequest(new { message = "Comment is required" });
             if (model.TicketId <= 0) return BadRequest(new { message = "TicketId is required" });
@@ -57,6 +58,24 @@ namespace ITSM.Portal.API.Controllers
 
             _context.TicketComments.Add(comment);
             await _context.SaveChangesAsync();
+
+            // Add history entry for comment
+            try
+            {
+                var history = new TicketHistory
+                {
+                    TicketId = comment.TicketId,
+                    Action = "Comment",
+                    Details = comment.Comment,
+                    CreatedBy = comment.CreatedBy,
+                    CreatedDate = DateTime.UtcNow
+                };
+                _context.TicketHistories.Add(history);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+            }
 
             var dto = new TicketCommentDto { Id = comment.Id, Comment = comment.Comment, CreatedBy = comment.CreatedBy, CreatedDate = comment.CreatedDate };
 

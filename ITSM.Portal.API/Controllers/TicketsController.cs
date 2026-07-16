@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using ITSM.Portal.API.Data;
 using ITSM.Portal.API.Models;
+using ITSM.Portal.API.DTOs;
 
 namespace ITSM.Portal.API.Controllers
 {
@@ -71,7 +72,7 @@ namespace ITSM.Portal.API.Controllers
                     .ToDictionaryAsync(u => u.Id, u => u.Email as string);
             }
 
-            var result = tickets.Select(t => new TicketDto
+            var result = tickets.Select(t => new ITSM.Portal.API.DTOs.TicketDto
             {
                 Id = t.Id,
                 Title = t.Title,
@@ -81,7 +82,7 @@ namespace ITSM.Portal.API.Controllers
                 CreatedDate = t.CreatedDate,
                 CreatedBy = t.CreatedById != null && userDict.ContainsKey(t.CreatedById) ? userDict[t.CreatedById] : null,
                 AssignedTo = t.AssignedToId != null && userDict.ContainsKey(t.AssignedToId) ? userDict[t.AssignedToId] : null,
-                Comments = t.Comments.Select(c => new CommentDto { Id = c.Id, Comment = c.Comment, CreatedBy = c.CreatedBy, CreatedDate = c.CreatedDate, TicketId = c.TicketId }).ToList()
+                Comments = t.Comments.Select(c => new ITSM.Portal.API.DTOs.TicketCommentDto { Id = c.Id, Comment = c.Comment, CreatedBy = c.CreatedBy, CreatedDate = c.CreatedDate }).ToList()
             }).ToList();
 
             return Ok(new { items = result, totalCount, page, pageSize });
@@ -110,7 +111,7 @@ namespace ITSM.Portal.API.Controllers
                 userDict = await _userManager.Users.Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Email as string);
             }
 
-            var dto = new TicketDto
+            var dto = new ITSM.Portal.API.DTOs.TicketDto
             {
                 Id = ticket.Id,
                 Title = ticket.Title,
@@ -120,10 +121,27 @@ namespace ITSM.Portal.API.Controllers
                 CreatedDate = ticket.CreatedDate,
                 CreatedBy = ticket.CreatedBy != null && userDict.ContainsKey(ticket.CreatedBy) ? userDict[ticket.CreatedBy] : null,
                 AssignedTo = ticket.AssignedTo != null && userDict.ContainsKey(ticket.AssignedTo) ? userDict[ticket.AssignedTo] : null,
-                Comments = ticket.Comments?.Select(c => new CommentDto { Id = c.Id, Comment = c.Comment, CreatedBy = c.CreatedBy, CreatedDate = c.CreatedDate, TicketId = c.TicketId }).ToList()
+                Comments = ticket.Comments?.Select(c => new ITSM.Portal.API.DTOs.TicketCommentDto { Id = c.Id, Comment = c.Comment, CreatedBy = c.CreatedBy, CreatedDate = c.CreatedDate }).ToList()
             };
 
-            return Ok(dto);
+            // include recent history entries
+            try
+            {
+                var histories = await _context.TicketHistories
+                    .Where(h => h.TicketId == ticket.Id)
+                    .OrderByDescending(h => h.CreatedDate)
+                    .Take(50)
+                    .Select(h => new TicketHistoryDto { Id = h.Id, Action = h.Action, Details = h.Details, CreatedBy = h.CreatedBy, CreatedDate = h.CreatedDate })
+                    .ToListAsync();
+
+                // attach to response via an anonymous wrapper
+                return Ok(new { ticket = dto, history = histories });
+            }
+            catch
+            {
+                // If history fails, still return ticket
+                return Ok(new { ticket = dto, history = new List<TicketHistoryDto>() });
+            }
         }
 
 
@@ -150,8 +168,28 @@ namespace ITSM.Portal.API.Controllers
 
             await _context.SaveChangesAsync();
 
+            // Add history entry for ticket creation
+            try
+            {
+                var history = new TicketHistory
+                {
+                    TicketId = ticket.Id,
+                    Action = "Created",
+                    Details = $"Ticket created with status '{ticket.Status}'",
+                    CreatedBy = user?.Email ?? "System",
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.TicketHistories.Add(history);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                // Swallow history errors to avoid breaking primary flow
+            }
+
             // Build DTO to return
-            var dto = new TicketDto
+            var dto = new ITSM.Portal.API.DTOs.TicketDto
             {
                 Id = ticket.Id,
                 Title = ticket.Title,
@@ -161,10 +199,35 @@ namespace ITSM.Portal.API.Controllers
                 CreatedDate = ticket.CreatedDate,
                 CreatedBy = user?.Email,
                 AssignedTo = null,
-                Comments = new List<CommentDto>()
+                Comments = new List<ITSM.Portal.API.DTOs.TicketCommentDto>()
             };
 
             return CreatedAtAction(nameof(GetTicket), new { id = ticket.Id }, dto);
+        }
+
+
+        // GET: api/tickets/{id}/history
+        [HttpGet("{id}/history")]
+        public async Task<IActionResult> GetHistory(int id)
+        {
+            try
+            {
+                var exists = await _context.Tickets.AnyAsync(t => t.Id == id);
+                if (!exists) return NotFound();
+
+                var histories = await _context.TicketHistories
+                    .Where(h => h.TicketId == id)
+                    .OrderByDescending(h => h.CreatedDate)
+                    .Select(h => new TicketHistoryDto { Id = h.Id, Action = h.Action, Details = h.Details, CreatedBy = h.CreatedBy, CreatedDate = h.CreatedDate })
+                    .ToListAsync();
+
+                return Ok(histories);
+            }
+            catch
+            {
+                // If the history table doesn't exist or another error occurs, return an empty list
+                return Ok(new List<TicketHistoryDto>());
+            }
         }
 
 
@@ -193,6 +256,25 @@ namespace ITSM.Portal.API.Controllers
 
 
             await _context.SaveChangesAsync();
+
+            // Add history entry for assignment
+            try
+            {
+                var assigner = await _userManager.GetUserAsync(User);
+                var history = new TicketHistory
+                {
+                    TicketId = ticket.Id,
+                    Action = "Assigned",
+                    Details = $"Assigned to userId: {userId}",
+                    CreatedBy = assigner?.Email ?? "System",
+                    CreatedDate = DateTime.UtcNow
+                };
+                _context.TicketHistories.Add(history);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+            }
 
 
 
@@ -239,6 +321,25 @@ namespace ITSM.Portal.API.Controllers
 
             await _context.SaveChangesAsync();
 
+            // Add history entry for generic updates
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                var history = new TicketHistory
+                {
+                    TicketId = existingTicket.Id,
+                    Action = "Updated",
+                    Details = "Ticket fields updated",
+                    CreatedBy = user?.Email ?? "System",
+                    CreatedDate = DateTime.UtcNow
+                };
+                _context.TicketHistories.Add(history);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+            }
+
 
 
             return NoContent();
@@ -284,6 +385,25 @@ namespace ITSM.Portal.API.Controllers
 
             await _context.SaveChangesAsync();
 
+            // Add history entry for status change
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                var history = new TicketHistory
+                {
+                    TicketId = ticket.Id,
+                    Action = "StatusChanged",
+                    Details = $"Status changed to '{status}'",
+                    CreatedBy = user?.Email ?? "System",
+                    CreatedDate = DateTime.UtcNow
+                };
+                _context.TicketHistories.Add(history);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+            }
+
 
             return Ok(new
             {
@@ -311,6 +431,25 @@ namespace ITSM.Portal.API.Controllers
 
 
             await _context.SaveChangesAsync();
+
+            // Optionally add history for deletion
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                var history = new TicketHistory
+                {
+                    TicketId = ticket.Id,
+                    Action = "Deleted",
+                    Details = "Ticket deleted",
+                    CreatedBy = user?.Email ?? "System",
+                    CreatedDate = DateTime.UtcNow
+                };
+                _context.TicketHistories.Add(history);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+            }
 
 
 

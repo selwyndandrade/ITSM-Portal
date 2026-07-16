@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { getTickets, assignTicket } from '../services/ticketService'
 import StatsCard from '../components/StatsCard'
 import TicketsTable from '../components/TicketsTable'
@@ -12,6 +12,9 @@ export default function Dashboard() {
   const [error, setError] = useState(null)
   const [assigningFor, setAssigningFor] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
+  const [query, setQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [filterPriority, setFilterPriority] = useState('')
 
   async function load() {
     setLoading(true)
@@ -36,6 +39,15 @@ export default function Dashboard() {
     open: tickets.filter(t => t.status === 'Open').length,
     assigned: tickets.filter(t => t.status === 'Assigned').length
   }
+
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(t => {
+      if (query && !t.title.toLowerCase().includes(query.toLowerCase())) return false
+      if (filterStatus && t.status !== filterStatus) return false
+      if (filterPriority && t.priority !== filterPriority) return false
+      return true
+    })
+  }, [tickets, query, filterStatus, filterPriority])
 
   async function handleSelectUser(user) {
     if (!assigningFor) return
@@ -67,7 +79,24 @@ export default function Dashboard() {
       {successMessage && <div style={{ background: '#e6ffed', padding: 8, borderRadius: 6, marginBottom: 12 }}>{successMessage}</div>}
 
       <div style={{ marginTop: 8 }}>
-        <TicketsTable tickets={tickets} loading={loading} error={error} onAssignClick={(t) => setAssigningFor(t)} />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+          <input placeholder="Search title..." value={query} onChange={(e) => setQuery(e.target.value)} style={{ padding: 8, flex: 1 }} />
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: 8 }}>
+            <option value="">All Statuses</option>
+            <option>Open</option>
+            <option>In Progress</option>
+            <option>Resolved</option>
+            <option>Closed</option>
+          </select>
+          <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={{ padding: 8 }}>
+            <option value="">All Priorities</option>
+            <option>Low</option>
+            <option>Medium</option>
+            <option>High</option>
+          </select>
+        </div>
+
+        <TicketsTable tickets={filteredTickets} loading={loading} error={error} onAssignClick={(t) => setAssigningFor(t)} />
       </div>
 
       {assigningFor && (

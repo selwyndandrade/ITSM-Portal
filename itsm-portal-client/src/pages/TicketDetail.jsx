@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getTicket, postComment } from '../services/ticketService'
+import { getTicket, postComment, updateStatus, getHistory } from '../services/ticketService'
+
+import TicketHistory from '../components/TicketHistory'
 
 export default function TicketDetail() {
   const { id } = useParams()
@@ -8,6 +10,10 @@ export default function TicketDetail() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [commentText, setCommentText] = useState('')
+  const [status, setStatus] = useState('')
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [history, setHistory] = useState([])
 
   async function load() {
     setLoading(true)
@@ -15,6 +21,14 @@ export default function TicketDetail() {
     try {
       const res = await getTicket(id)
       setTicket(res)
+      setStatus(res.status || 'Open')
+      // load history
+      try {
+        const h = await getHistory(id)
+        setHistory(h)
+      } catch (ex) {
+        // ignore history load errors
+      }
     } catch (ex) {
       setError(ex?.response?.data?.message || ex.message || 'Failed to load ticket')
     } finally {
@@ -24,6 +38,7 @@ export default function TicketDetail() {
 
   useEffect(() => {
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   async function handleSubmit(e) {
@@ -38,6 +53,22 @@ export default function TicketDetail() {
     }
   }
 
+  async function handleUpdateStatus() {
+    if (!ticket) return
+    setUpdatingStatus(true)
+    setSuccessMessage(null)
+    try {
+      await updateStatus(ticket.id, status)
+      setSuccessMessage('Status updated')
+      await load()
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (ex) {
+      setError(ex?.response?.data?.message || ex.message || 'Failed to update status')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
   if (loading) return <div>Loading ticket...</div>
   if (error) return <div style={{ color: '#b00020' }}>{error}</div>
   if (!ticket) return <div>No ticket found.</div>
@@ -48,7 +79,19 @@ export default function TicketDetail() {
       <div style={{ marginBottom: 12 }}>{ticket.description}</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-        <div><strong>Status:</strong> {ticket.status}</div>
+        <div>
+          <strong>Status:</strong>
+          <div style={{ marginTop: 6 }}>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ padding: 8 }}>
+              <option>Open</option>
+              <option>In Progress</option>
+              <option>Resolved</option>
+              <option>Closed</option>
+            </select>
+            <button onClick={handleUpdateStatus} disabled={updatingStatus} style={{ marginLeft: 8, padding: '8px 10px' }}>{updatingStatus ? 'Updating...' : 'Update Status'}</button>
+            {successMessage && <span style={{ marginLeft: 12, color: '#16a34a' }}>{successMessage}</span>}
+          </div>
+        </div>
         <div><strong>Priority:</strong> {ticket.priority}</div>
         <div><strong>Created:</strong> {new Date(ticket.createdDate).toLocaleString()}</div>
         <div><strong>Created By:</strong> {ticket.createdBy ?? '—'}</div>
@@ -75,6 +118,8 @@ export default function TicketDetail() {
           <button type="submit">Add Comment</button>
         </div>
       </form>
+
+      <TicketHistory items={history} />
     </div>
   )
 }
