@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$c=Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue; if($c){$p=$c.OwningProcess; Stop-Process -Id $p -Force -ErrorAction SilentlyContinue; Write-Host ('Freed port 5173 (PID '+$p+')')} else {Write-Host 'Port 5173 already free'}\"",
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
@@ -11,9 +12,10 @@
   },
   "dependencies": {
     "axios": "^1.18.1",
-    "react-router-dom": "^6.14.1",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^6.14.1",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
