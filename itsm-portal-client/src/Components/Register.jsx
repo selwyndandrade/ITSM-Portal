@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import AuthBackgroundVideo from './AuthBackgroundVideo';
 
 export default function Register({ onRegister, onSwitchToLogin }) {
   const [email, setEmail] = useState('');
@@ -51,6 +52,7 @@ export default function Register({ onRegister, onSwitchToLogin }) {
 
   return (
     <div className="auth-shell">
+      <AuthBackgroundVideo />
       <div className="auth-background-image" aria-hidden="true" />
       <div className="auth-card">
         <div className="auth-card__header">
