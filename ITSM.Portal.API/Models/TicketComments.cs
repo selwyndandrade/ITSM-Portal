@@ -12,11 +12,15 @@ namespace ITSM.Portal.API.Models
 
         public string CreatedBy { get; set; } = string.Empty;
 
+        public string? AuthorUserId { get; set; }
+
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         public int TicketId { get; set; }
 
         [JsonIgnore]
         public Ticket Ticket { get; set; } = null!;
+
+        public ApplicationUser? AuthorUser { get; set; }
     }
 }

@@ -15,6 +15,10 @@ namespace ITSM.Portal.API.Models
 
         public string CreatedBy { get; set; } = string.Empty;
 
+        public string? ActorUserId { get; set; }
+
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+
+        public ApplicationUser? ActorUser { get; set; }
     }
 }
