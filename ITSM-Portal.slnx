@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="ITSM.Portal.API.Tests/ITSM.Portal.API.Tests.csproj" />
   <Project Path="ITSM.Portal.API/ITSM.Portal.API.csproj" />
 </Solution>
