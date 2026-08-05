@@ -2,13 +2,19 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import Badge from './Badge'
 import EmptyState from './EmptyState'
+import RoleGuard from './RoleGuard'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function TicketsTable({ tickets, loading, error, onAssignClick }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
   if (loading) return <div>Loading tickets...</div>
   if (error) return <div style={{ color: '#b00020' }}>Error loading tickets: {error}</div>
 
   if (!tickets || tickets.length === 0) return <EmptyState title="No tickets" description="There are no tickets to display." />
-  const navigate = useNavigate()
+
+  const canAssign = user && ['Admin', 'Technician'].includes(user.role)
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -18,10 +24,11 @@ export default function TicketsTable({ tickets, loading, error, onAssignClick })
             <th style={{ padding: 12 }}>Title</th>
             <th style={{ padding: 12 }}>Priority</th>
             <th style={{ padding: 12 }}>Status</th>
+            <th style={{ padding: 12 }}>SLA</th>
             <th style={{ padding: 12 }}>Created</th>
             <th style={{ padding: 12 }}>Created By</th>
             <th style={{ padding: 12 }}>Assigned To</th>
-            <th style={{ padding: 12 }}>Actions</th>
+            {canAssign && <th style={{ padding: 12 }}>Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -33,12 +40,15 @@ export default function TicketsTable({ tickets, loading, error, onAssignClick })
               </td>
               <td style={{ padding: 12 }}><Badge type="priority" value={t.priority || 'Low'} /></td>
               <td style={{ padding: 12 }}><Badge type="status" value={t.status || 'Open'} /></td>
+              <td style={{ padding: 12 }}><Badge type="sla" value={t.slaStatus || 'None'} /></td>
               <td style={{ padding: 12 }}>{new Date(t.createdDate).toLocaleString()}</td>
               <td style={{ padding: 12 }}>{t.createdBy ?? '—'}</td>
               <td style={{ padding: 12 }}>{t.assignedTo ?? '—'}</td>
-              <td style={{ padding: 12 }}>
-                <button onClick={() => onAssignClick(t)} style={{ padding: '8px 10px', borderRadius: 6, background: '#0f172a', color: 'white', border: 'none' }}>Assign</button>
-              </td>
+              {canAssign && (
+                <td style={{ padding: 12 }}>
+                  <button onClick={() => onAssignClick(t)} style={{ padding: '8px 10px', borderRadius: 6, background: '#0f172a', color: 'white', border: 'none' }}>Assign</button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
