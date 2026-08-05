@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "PowerShell(code \"C:\\\\Users\\\\selwy\\\\source\\\\repos\\\\JARVIS\")"
+    ]
+  }
+}
