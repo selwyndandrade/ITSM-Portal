@@ -13,5 +13,9 @@ namespace ITSM.Portal.API.DTOs
 
 
         public string Priority { get; set; } = "Medium";
+
+        public string? Category { get; set; }
+
+        public int? AssetId { get; set; }
     }
 }

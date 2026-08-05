@@ -10,6 +10,8 @@ namespace ITSM.Portal.API.DTOs
 
         public string CreatedBy { get; set; } = string.Empty;
 
+        public string? AuthorUserId { get; set; }
+
         public DateTime CreatedDate { get; set; }
     }
 }

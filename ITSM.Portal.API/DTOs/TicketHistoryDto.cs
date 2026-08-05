@@ -12,6 +12,8 @@ namespace ITSM.Portal.API.DTOs
 
         public string CreatedBy { get; set; } = string.Empty;
 
+        public string? ActorUserId { get; set; }
+
         public DateTime CreatedDate { get; set; }
     }
 }
