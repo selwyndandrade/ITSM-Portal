@@ -11,7 +11,7 @@ export default function DashboardCharts({ stats }) {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-      <div style={{ background: 'white', padding: 16, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ background: 'var(--surface)', color: 'var(--text-primary)', padding: 16, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <h3 style={{ marginTop: 0 }}>Tickets by Status</h3>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={statusData}>
@@ -24,7 +24,7 @@ export default function DashboardCharts({ stats }) {
         </ResponsiveContainer>
       </div>
 
-      <div style={{ background: 'white', padding: 16, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ background: 'var(--surface)', color: 'var(--text-primary)', padding: 16, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <h3 style={{ marginTop: 0 }}>Tickets by Priority</h3>
         <ResponsiveContainer width="100%" height={250}>
           <PieChart>

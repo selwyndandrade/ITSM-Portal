@@ -6,13 +6,13 @@ import { getDashboard } from '../services/dashboardService'
 import { resolveApiUrl } from '../services/api'
 
 const primaryLinks = [
-  { to: '/', label: 'Dashboard', hint: 'Overview', icon: 'D', tone: 'primary' },
-  { to: '/tickets', label: 'Tickets', hint: 'Queue & triage', icon: 'T', tone: 'accent' },
-  { to: '/assets', label: 'Assets', hint: 'Inventory & ownership', icon: 'A', tone: 'neutral' },
-  { to: '/catalog', label: 'Service Catalog', hint: 'Request services', icon: 'S', tone: 'accent' },
-  { to: '/my-requests', label: 'My Requests', hint: 'Track progress', icon: 'R', tone: 'success' },
-  { to: '/knowledge', label: 'Knowledge', hint: 'Self service', icon: 'K', tone: 'success' },
-  { to: '/reports', label: 'Reports', hint: 'Insights', icon: 'P', tone: 'success' }
+  { to: '/', label: 'Dashboard' },
+  { to: '/tickets', label: 'Tickets' },
+  { to: '/assets', label: 'Assets' },
+  { to: '/catalog', label: 'Service Catalog' },
+  { to: '/my-requests', label: 'My Requests' },
+  { to: '/knowledge', label: 'Knowledge' },
+  { to: '/reports', label: 'Reports' }
 ]
 
 export default function Sidebar() {
@@ -70,9 +70,9 @@ export default function Sidebar() {
   const links = isAdmin
     ? [
         ...primaryLinks,
-        { to: '/approvals', label: 'Approvals', hint: 'Pending decisions', icon: 'A', tone: 'accent' },
-        { to: '/automation-rules', label: 'Automation Rules', hint: 'Workflow rules', icon: 'R', tone: 'accent' },
-        { to: '/automation-activity', label: 'Automation Activity', hint: 'Execution history', icon: 'A', tone: 'neutral' }
+        { to: '/approvals', label: 'Approvals' },
+        { to: '/automation-rules', label: 'Automation Rules' },
+        { to: '/automation-activity', label: 'Automation Activity' }
       ]
     : primaryLinks
 
@@ -123,11 +123,7 @@ export default function Sidebar() {
       <nav className="theme-nav">
         {links.map((item) => (
           <NavLink key={item.to} to={item.to} className={({ isActive }) => `theme-link${isActive ? ' active' : ''}`} end={item.to === '/'}>
-            <span className={`theme-link__icon theme-link__icon--${item.tone}`}>{item.icon}</span>
-            <span className="theme-link__content">
-              <strong>{item.label}</strong>
-              <small>{item.hint}</small>
-            </span>
+            {item.label}
           </NavLink>
         ))}
       </nav>

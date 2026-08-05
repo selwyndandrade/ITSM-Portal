@@ -108,8 +108,13 @@ export default function Header({ onOpenShortcuts } = {}) {
           className="theme-header__search theme-header__search--button"
           onClick={() => window.dispatchEvent(new Event('open-command-palette'))}
         >
-          <span aria-hidden="true" className="theme-header__searchIcon">Q</span>
-          <span className="theme-header__searchPlaceholder">Search tickets, assets, people, articles…</span>
+          <span aria-hidden="true" className="theme-header__searchIcon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </span>
+          <span className="theme-header__searchPlaceholder">Search tickets, assets, people…</span>
           <kbd>Ctrl K</kbd>
         </button>
       </div>

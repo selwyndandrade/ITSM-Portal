@@ -149,13 +149,13 @@ export default function ProfilePage() {
   return (
     <div style={{ padding: 24, display: 'grid', gap: 24 }}>
       {showWizard && (
-        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--border-color)', borderRadius: 20, padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
             <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: 12, color: '#2563eb' }}>First login setup</p>
-            <h3 style={{ margin: '6px 0 4px', color: '#0f172a' }}>Welcome to Kyro</h3>
-            <p style={{ margin: 0, color: '#475569' }}>Use this setup to confirm your first-view preferences and jump into work faster.</p>
+            <h3 style={{ margin: '6px 0 4px', color: 'var(--text-primary)' }}>Welcome to Kyro</h3>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>Use this setup to confirm your first-view preferences and jump into work faster.</p>
           </div>
-          <button type="button" onClick={() => setShowWizard(false)} style={{ padding: '10px 16px', borderRadius: 999, background: '#fff', color: '#0f172a', border: '1px solid #bfdbfe', cursor: 'pointer' }}>Skip for now</button>
+          <button type="button" onClick={() => setShowWizard(false)} style={{ padding: '10px 16px', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', cursor: 'pointer' }}>Skip for now</button>
         </div>
       )}
 
@@ -173,15 +173,15 @@ export default function ProfilePage() {
       </div>
 
       <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'minmax(0, 1.1fr) minmax(320px, 0.9fr)' }}>
-        <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 20, padding: 24 }}>
+        <section style={{ background: 'var(--surface)', border: '1px solid var(--border-color)', borderRadius: 20, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 92, height: 92, borderRadius: '50%', overflow: 'hidden', border: '2px solid #e5e7eb', background: '#f8fafc' }}>
+            <div style={{ width: 92, height: 92, borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border-color)', background: 'var(--surface-hover)' }}>
               <img src={avatarSrc} alt="Current profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div>
-              <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: 12, color: '#64748b' }}>Current avatar</p>
-              <h3 style={{ margin: '6px 0 2px', fontSize: 20, color: '#0f172a' }}>{displayName || user?.email || 'Your profile'}</h3>
-              <p style={{ margin: 0, color: '#64748b' }}>PNG, JPG, or WEBP up to 2MB.</p>
+              <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: 12, color: 'var(--text-muted)' }}>Current avatar</p>
+              <h3 style={{ margin: '6px 0 2px', fontSize: 20, color: 'var(--text-primary)' }}>{displayName || user?.email || 'Your profile'}</h3>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>PNG, JPG, or WEBP up to 2MB.</p>
             </div>
           </div>
 
@@ -190,38 +190,38 @@ export default function ProfilePage() {
               Upload photo
               <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleUpload} style={{ display: 'none' }} />
             </label>
-            <button type="button" onClick={handleRemove} disabled={saving} style={{ padding: '10px 16px', borderRadius: 999, background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', cursor: 'pointer', fontWeight: 600 }}>
+            <button type="button" onClick={handleRemove} disabled={saving} style={{ padding: '10px 16px', borderRadius: 999, background: 'var(--surface-hover)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', cursor: 'pointer', fontWeight: 600 }}>
               {saving ? 'Working...' : 'Remove picture'}
             </button>
           </div>
 
           {(message || error) && (
-            <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 12, background: message ? '#ecfdf3' : '#fef2f2', color: message ? '#166534' : '#b91c1c' }}>
+            <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 12, background: 'var(--surface-hover)', color: message ? '#16a34a' : '#ef4444' }}>
               {message || error}
             </div>
           )}
 
           <div style={{ marginTop: 20, display: 'grid', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#0f172a' }}>Display name</label>
-              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your display name" style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid #e2e8f0' }} />
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: 'var(--text-primary)' }}>Display name</label>
+              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your display name" style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-color)' }} />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#0f172a' }}>Bio</label>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell people a bit about yourself" rows={4} style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid #e2e8f0', resize: 'vertical' }} />
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: 'var(--text-primary)' }}>Bio</label>
+              <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell people a bit about yourself" rows={4} style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-color)', resize: 'vertical' }} />
             </div>
             <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#0f172a' }}>LinkedIn</label>
-                <input value={linkedInUrl} onChange={(e) => setLinkedInUrl(e.target.value)} placeholder="https://linkedin.com/in/.." style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid #e2e8f0' }} />
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn</label>
+                <input value={linkedInUrl} onChange={(e) => setLinkedInUrl(e.target.value)} placeholder="https://linkedin.com/in/.." style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-color)' }} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#0f172a' }}>GitHub</label>
-                <input value={gitHubUrl} onChange={(e) => setGitHubUrl(e.target.value)} placeholder="https://github.com/.." style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid #e2e8f0' }} />
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: 'var(--text-primary)' }}>GitHub</label>
+                <input value={gitHubUrl} onChange={(e) => setGitHubUrl(e.target.value)} placeholder="https://github.com/.." style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-color)' }} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#0f172a' }}>Portfolio</label>
-                <input value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://your-site.com" style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid #e2e8f0' }} />
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: 'var(--text-primary)' }}>Portfolio</label>
+                <input value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://your-site.com" style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-color)' }} />
               </div>
             </div>
             <button type="button" onClick={handleSaveDisplayName} disabled={saving} style={{ marginTop: 4, padding: '10px 16px', borderRadius: 999, background: '#111827', color: 'white', border: 'none', cursor: 'pointer' }}>
@@ -230,42 +230,42 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <aside style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 20, padding: 24, display: 'grid', gap: 16 }}>
-          <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: 12, color: '#64748b' }}>Preview</p>
+        <aside style={{ background: 'var(--surface-hover)', border: '1px solid var(--border-color)', borderRadius: 20, padding: 24, display: 'grid', gap: 16 }}>
+          <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: 12, color: 'var(--text-muted)' }}>Preview</p>
           <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', border: '2px solid #dbeafe', background: '#e2e8f0' }}>
+            <div style={{ width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border-color)', background: 'var(--surface-hover)' }}>
               <img src={avatarSrc} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div>
-              <h4 style={{ margin: '0 0 4px', color: '#0f172a' }}>Enterprise-ready identity</h4>
-              <p style={{ margin: 0, color: '#64748b', lineHeight: 1.5 }}>Avatars appear across the shell, the profile page, and future team surfaces.</p>
+              <h4 style={{ margin: '0 0 4px', color: 'var(--text-primary)' }}>Enterprise-ready identity</h4>
+              <p style={{ margin: 0, color: 'var(--text-muted)', lineHeight: 1.5 }}>Avatars appear across the shell, the profile page, and future team surfaces.</p>
             </div>
           </div>
-          <div style={{ padding: 14, borderRadius: 14, background: '#fff', border: '1px solid #e2e8f0' }}>
-            <p style={{ margin: 0, fontWeight: 600, color: '#0f172a' }}>What gets saved</p>
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: '#64748b', lineHeight: 1.7 }}>
+          <div style={{ padding: 14, borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border-color)' }}>
+            <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>What gets saved</p>
+            <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: 'var(--text-muted)', lineHeight: 1.7 }}>
               <li>Your profile photo</li>
               <li>Your display name</li>
               <li>These values are loaded from your authenticated profile on every visit</li>
             </ul>
           </div>
 
-          <form onSubmit={handlePreferenceSave} style={{ padding: 14, borderRadius: 14, background: '#fff', border: '1px solid #e2e8f0' }}>
-            <p style={{ margin: 0, fontWeight: 600, color: '#0f172a' }}>Workspace preferences</p>
+          <form onSubmit={handlePreferenceSave} style={{ padding: 14, borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border-color)' }}>
+            <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>Workspace preferences</p>
             <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
-              <label style={{ display: 'grid', gap: 6, color: '#334155' }}>
+              <label style={{ display: 'grid', gap: 6, color: 'var(--text-secondary)' }}>
                 <span>Default view</span>
-                <select value={preferences.defaultView} onChange={(event) => setPreferences((current) => ({ ...current, defaultView: event.target.value }))} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                <select value={preferences.defaultView} onChange={(event) => setPreferences((current) => ({ ...current, defaultView: event.target.value }))} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-color)' }}>
                   <option value="Dashboard">Dashboard</option>
                   <option value="Tickets">Tickets</option>
                   <option value="Knowledge">Knowledge</option>
                 </select>
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#334155' }}>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                 <span>Auto-assign tickets</span>
                 <input type="checkbox" checked={preferences.autoAssign} onChange={(event) => setPreferences((current) => ({ ...current, autoAssign: event.target.checked }))} />
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#334155' }}>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                 <span>Notify on updates</span>
                 <input type="checkbox" checked={preferences.notifyUpdates} onChange={(event) => setPreferences((current) => ({ ...current, notifyUpdates: event.target.checked }))} />
               </label>

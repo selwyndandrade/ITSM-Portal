@@ -32,7 +32,7 @@ export default function TicketList({ tickets = [], loading, error, onAssignClick
   const { user } = useAuth()
 
   if (loading) return <div className="dashboard-empty">Loading your queue…</div>
-  if (error) return <div style={{ color: '#b00020' }}>We could not refresh the queue right now. Please try again shortly.</div>
+  if (error) return <div className="dashboard-form-error">We could not refresh the queue right now. Please try again shortly.</div>
   if (!tickets.length) return <div className="dashboard-empty">No active tickets yet. Create a request or submit a new issue to get started.</div>
 
   const canAssign = user && ['Admin', 'Technician'].includes(user.role)
@@ -58,7 +58,7 @@ export default function TicketList({ tickets = [], loading, error, onAssignClick
             <tr key={ticket.id}>
               <td>#{ticket.id}</td>
               <td>
-                <button type="button" onClick={() => navigate(`/tickets/${ticket.id}`)} className="dashboard-ticket-title" style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#111827', textAlign: 'left' }}>
+                <button type="button" onClick={() => navigate(`/tickets/${ticket.id}`)} className="dashboard-ticket-title" style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
                   {ticket.title || 'Untitled ticket'}
                 </button>
                 <div className="dashboard-ticket-meta">{ticket.description ? ticket.description.slice(0, 80) : 'No summary provided'}</div>
@@ -71,7 +71,7 @@ export default function TicketList({ tickets = [], loading, error, onAssignClick
               <td>{formatDate(ticket.lastUpdated || ticket.updatedDate)}</td>
               {canAssign ? (
                 <td>
-                  <button type="button" onClick={() => onAssignClick?.(ticket)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', background: '#fff', padding: '8px 10px', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => onAssignClick?.(ticket)} className="dashboard-table-action">
                     Assign
                   </button>
                 </td>
