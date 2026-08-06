@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getCatalogItem, submitCatalogRequest } from '../services/catalogService'
+import { getErrorMessage } from '../services/ticketService'
 
 export default function ServiceDetail() {
   const { id } = useParams()
@@ -8,15 +9,22 @@ export default function ServiceDetail() {
   const [item, setItem] = useState(null)
   const [details, setDetails] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const data = await getCatalogItem(id)
-      setItem(data)
-      setLoading(false)
+      setError(null)
+      try {
+        const data = await getCatalogItem(id)
+        setItem(data)
+      } catch (ex) {
+        setError(getErrorMessage(ex, 'Failed to load this service. Please try again.'))
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [id])
@@ -37,6 +45,7 @@ export default function ServiceDetail() {
   }
 
   if (loading) return <div className="dashboard-empty">Loading service…</div>
+  if (error) return <div className="dashboard-empty" style={{ color: '#b00020' }}>{error}</div>
   if (!item) return <div className="dashboard-empty">Service not found.</div>
 
   return (

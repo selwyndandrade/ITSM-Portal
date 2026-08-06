@@ -1,8 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import api from '../services/api'
+import { getErrorMessage } from '../services/ticketService'
+import DataGrid from '../Components/DataGrid'
+import DashboardCard from '../Components/DashboardCard'
+import ErrorBanner from '../Components/ErrorBanner'
 
-const statusOptions = ['All', 'Succeeded', 'Failed', 'Skipped']
-const triggerOptions = ['All', 'TicketCreated', 'TicketUpdated', 'ServiceRequestSubmitted', 'ServiceRequestApproved', 'ServiceRequestRejected', 'AssetAssigned']
+const statusOptions = ['Succeeded', 'Failed', 'Skipped']
+const triggerOptions = ['TicketCreated', 'TicketUpdated', 'ServiceRequestSubmitted', 'ServiceRequestApproved', 'ServiceRequestRejected', 'AssetAssigned']
+const statusDotColor = { Succeeded: '#22c55e', Failed: '#dc2626', Skipped: '#94a3b8' }
 
 function formatDate(value) {
   if (!value) return '—'
@@ -17,24 +22,22 @@ export default function AutomationActivity() {
   const [pageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('All')
-  const [triggerType, setTriggerType] = useState('All')
+  const [status, setStatus] = useState('')
+  const [triggerType, setTriggerType] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   async function loadActivities() {
     setLoading(true)
+    setError(null)
     try {
       const response = await api.get('/api/automationexecutions', {
-        params: {
-          search,
-          status: status === 'All' ? '' : status,
-          triggerType: triggerType === 'All' ? '' : triggerType,
-          page,
-          pageSize
-        }
+        params: { search, status, triggerType, page, pageSize }
       })
       setItems(response.data?.items || [])
       setTotalCount(response.data?.totalCount || 0)
+    } catch (ex) {
+      setError(getErrorMessage(ex, 'Automation activity could not be loaded.'))
     } finally {
       setLoading(false)
     }
@@ -42,6 +45,7 @@ export default function AutomationActivity() {
 
   useEffect(() => {
     loadActivities()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, status, triggerType])
 
   useEffect(() => {
@@ -50,64 +54,101 @@ export default function AutomationActivity() {
       loadActivities()
     }, 250)
     return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
-  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize))
+  function handleFilterChange(key, value) {
+    setPage(1)
+    if (key === 'triggerType') setTriggerType(value)
+    else if (key === 'status') setStatus(value)
+    else if (key === 'message') setSearch(value)
+  }
 
   return (
     <div className="asset-shell">
       <div className="asset-hero">
         <div>
-          <p className="dashboard-eyebrow">AUTOMATION ACTIVITY</p>
+          <p className="dashboard-eyebrow">Automation Activity</p>
           <h2>Execution history and outcomes</h2>
           <p>Monitor rule executions, trace related tickets and requests, and review automation outcomes.</p>
         </div>
       </div>
 
+      <ErrorBanner message={error} />
+
       <div className="dashboard-card">
-        <div className="dashboard-card__header" style={{ marginBottom: 12 }}>
+        <div className="dashboard-card__header">
           <div>
-            <p className="dashboard-card__eyebrow">Activity feed</p>
+            <p className="dashboard-card__eyebrow">Activity Feed</p>
             <h2>Recent automation runs</h2>
           </div>
         </div>
 
-        <div className="asset-filters" style={{ marginBottom: 12, width: '100%' }}>
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search rule, message, trigger" />
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-          <select value={triggerType} onChange={(event) => setTriggerType(event.target.value)}>
-            {triggerOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-        </div>
-
-        {loading ? <div className="dashboard-empty">Loading activity…</div> : (
-          <div style={{ display: 'grid', gap: 10 }}>
-            {items.length ? items.map((item) => (
-              <div key={item.id} className="ticket-comment-item">
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div>
-                    <div className="ticket-comment-meta">{item.triggerEvent} • {item.ruleName}</div>
-                    <strong>{item.message || 'No details recorded'}</strong>
-                  </div>
-                  <span className={`status-badge ${item.status?.toLowerCase()}`}>{item.status}</span>
-                </div>
-                <div style={{ marginTop: 6, color: '#6b7280' }}>
-                  Related entity: {item.relatedEntityType || '—'} #{item.relatedEntityId || '—'} • {formatDate(item.triggeredAt)}
-                </div>
-              </div>
-            )) : <div className="dashboard-empty">No automation activity matched the current filters.</div>}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <div className="dashboard-empty">Showing {items.length} of {totalCount}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="theme-button theme-button--secondary" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
-            <button type="button" className="theme-button theme-button--secondary" disabled={page >= pageCount} onClick={() => setPage((current) => current + 1)}>Next</button>
-          </div>
-        </div>
+        <DataGrid
+          serverMode
+          columns={[
+            {
+              key: 'triggerType',
+              label: 'Trigger',
+              filter: 'select',
+              filterOptions: triggerOptions,
+              sortable: false,
+              render: (item) => item.triggerEvent
+            },
+            {
+              key: 'message',
+              label: 'Rule / Message',
+              filter: 'text',
+              placeholder: 'Search rule, message, trigger',
+              sortable: false,
+              render: (item) => (
+                <>
+                  <div className="dashboard-ticket-meta">{item.ruleName}</div>
+                  <div className="dashboard-ticket-title">{item.message || 'No details recorded'}</div>
+                </>
+              )
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              filter: 'select',
+              filterOptions: statusOptions,
+              sortable: false,
+              render: (item) => (
+                <span className="dashboard-dot-label">
+                  <span className="dashboard-dot" style={{ background: statusDotColor[item.status] || '#94a3b8' }} />
+                  {item.status}
+                </span>
+              )
+            },
+            {
+              key: 'relatedEntity',
+              label: 'Related Entity',
+              sortable: false,
+              render: (item) => `${item.relatedEntityType || '—'} #${item.relatedEntityId || '—'}`
+            },
+            {
+              key: 'triggeredAt',
+              label: 'Triggered At',
+              sortable: false,
+              render: (item) => formatDate(item.triggeredAt)
+            }
+          ]}
+          rows={items}
+          getRowKey={(item) => item.id}
+          loading={loading}
+          loadingMessage="Loading activity..."
+          emptyTitle="No Automation Activity"
+          emptyDescription="No automation activity has been recorded yet."
+          noMatchMessage="No automation activity matched the current filters."
+          selectable={false}
+          filters={{ triggerType, status, message: search }}
+          onFilterChange={handleFilterChange}
+          page={page}
+          onPageChange={setPage}
+          totalCount={totalCount}
+          pageSize={pageSize}
+        />
       </div>
     </div>
   )

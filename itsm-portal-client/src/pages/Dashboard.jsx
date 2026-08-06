@@ -5,6 +5,7 @@ import { getAssets } from '../services/assetService'
 import { getDashboard } from '../services/dashboardService'
 import { getApprovalRequests } from '../services/approvalService'
 import { getAutomationRules } from '../services/automationService'
+import DashboardCard from '../Components/DashboardCard'
 import StatsCard from '../Components/StatsCard'
 import LoadingSpinner from '../Components/LoadingSpinner'
 import ErrorBanner from '../Components/ErrorBanner'
@@ -414,13 +415,7 @@ export default function Dashboard() {
 
       {businessMetrics && (
         <div className="dashboard-grid">
-          <section className="dashboard-card dashboard-card--wide">
-            <div className="dashboard-card__header">
-              <div>
-                <p className="dashboard-card__eyebrow">Business metrics</p>
-                <h2>Service desk performance</h2>
-              </div>
-            </div>
+          <DashboardCard eyebrow="Business metrics" title="Service desk performance" wide>
             <div className="admin-overview">
               <div className="admin-overview__card">
                 <p className="dashboard-card__eyebrow">Total tickets</p>
@@ -467,7 +462,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          </section>
+          </DashboardCard>
         </div>
       )}
 
@@ -476,22 +471,21 @@ export default function Dashboard() {
       {successMessage && <div className="dashboard-success">{successMessage}</div>}
 
       <div className="dashboard-grid">
-        <section className="dashboard-card dashboard-card--wide">
-          <div className="dashboard-card__header">
-            <div>
-              <p className="dashboard-card__eyebrow">Service queue</p>
-              <h2>Recent activity</h2>
-            </div>
+        <DashboardCard
+          eyebrow="Service queue"
+          title="Recent activity"
+          wide
+          action={(
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label htmlFor="ticket-view-filter" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280' }}>Filter queue</label>
+              <label htmlFor="ticket-view-filter" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Filter queue</label>
               <select id="ticket-view-filter" className="dashboard-filter" value={filter} onChange={(event) => setFilter(event.target.value)}>
                 {queuePresetOptions.map((option) => (
                   <option key={option.value} value={option.value}>{option.label} ({option.count})</option>
                 ))}
               </select>
             </div>
-          </div>
-
+          )}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <div className="dashboard-badge dashboard-badge--in-progress" style={{ padding: '8px 12px' }}>
               Active filter: {activeFilterOption.label} · {recentTickets.length} matching
@@ -516,8 +510,8 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard-actions" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 12 }}>
-            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search tickets" style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }} />
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}>
+            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search tickets" style={{ border: '1px solid var(--border-color)', borderRadius: '0.3rem', padding: '9px 10px' }} />
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={{ border: '1px solid var(--border-color)', borderRadius: '0.3rem', padding: '9px 10px' }}>
               <option value="">All statuses</option>
               <option value="Open">Open</option>
               <option value="Assigned">Assigned</option>
@@ -526,20 +520,20 @@ export default function Dashboard() {
               <option value="Resolved">Resolved</option>
               <option value="Closed">Closed</option>
             </select>
-            <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}>
+            <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)} style={{ border: '1px solid var(--border-color)', borderRadius: '0.3rem', padding: '9px 10px' }}>
               <option value="">All priorities</option>
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
             </select>
-            <select value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}>
+            <select value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)} style={{ border: '1px solid var(--border-color)', borderRadius: '0.3rem', padding: '9px 10px' }}>
               <option value="">All assignees</option>
               <option value="Unassigned">Unassigned</option>
               {Array.from(new Set(effectiveTickets.map((ticket) => ticket.assignedTo).filter(Boolean))).map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}>
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} style={{ border: '1px solid var(--border-color)', borderRadius: '0.3rem', padding: '9px 10px' }}>
               <option value="">All categories</option>
               <option value="Hardware">Hardware</option>
               <option value="Software">Software</option>
@@ -547,7 +541,7 @@ export default function Dashboard() {
               <option value="Network">Network</option>
               <option value="Security">Security</option>
             </select>
-            <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}>
+            <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} style={{ border: '1px solid var(--border-color)', borderRadius: '0.3rem', padding: '9px 10px' }}>
               <option value="">Any date</option>
               <option value="today">Today</option>
               <option value="week">Last 7 days</option>
@@ -558,16 +552,10 @@ export default function Dashboard() {
           <div className="dashboard-table-wrap">
             <TicketList tickets={recentTickets} loading={loading} error={error} onAssignClick={(ticket) => setAssigningFor(ticket)} />
           </div>
-        </section>
+        </DashboardCard>
 
         <aside className="dashboard-side">
-          <section className="dashboard-card">
-            <div className="dashboard-card__header">
-              <div>
-                <p className="dashboard-card__eyebrow">Operational pulse</p>
-                <h2>Action queue</h2>
-              </div>
-            </div>
+          <DashboardCard eyebrow="Operational pulse" title="Action queue">
             <div className="dashboard-attention">
               {needsAttention.length === 0 ? (
                 <div className="dashboard-empty">Everything looks steady right now.</div>
@@ -582,15 +570,9 @@ export default function Dashboard() {
                 ))
               )}
             </div>
-          </section>
+          </DashboardCard>
 
-          <section className="dashboard-card">
-            <div className="dashboard-card__header">
-              <div>
-                <p className="dashboard-card__eyebrow">Shared services</p>
-                <h2>My assigned work</h2>
-              </div>
-            </div>
+          <DashboardCard eyebrow="Shared services" title="My assigned work">
             <div className="dashboard-attention">
               {recentTickets.filter((ticket) => (ticket.assignedTo || '').toLowerCase() === (user?.displayName || user?.email || '').toLowerCase() || (ticket.assignedTo || '').toLowerCase() === (user?.email || '').toLowerCase()).slice(0, 3).map((ticket) => (
                 <div key={ticket.id} className="dashboard-attention__item">
@@ -604,15 +586,9 @@ export default function Dashboard() {
                 <div className="dashboard-empty">No tickets assigned to you right now.</div>
               )}
             </div>
-          </section>
+          </DashboardCard>
 
-          <section className="dashboard-card dashboard-ai">
-            <div className="dashboard-card__header">
-              <div>
-                <p className="dashboard-card__eyebrow">Meyon AI Assistant</p>
-                <h2>Productive by design</h2>
-              </div>
-            </div>
+          <DashboardCard eyebrow="Meyon AI Assistant" title="Productive by design" className="dashboard-ai">
             <p className="dashboard-ai__copy">Meyon now helps teams summarize incidents, recommend knowledge articles, predict urgency, and suggest next actions in seconds.</p>
             <div className="dashboard-ai__actions">
               <button type="button" className="dashboard-ai__button" onClick={openMeyon}>Summarize incidents</button>
@@ -620,33 +596,21 @@ export default function Dashboard() {
               <button type="button" className="dashboard-ai__button" onClick={openMeyon}>Recommend knowledge</button>
               <button type="button" className="dashboard-ai__button" onClick={openMeyon}>Prioritize work</button>
             </div>
-          </section>
+          </DashboardCard>
 
-          <section className="dashboard-card">
-            <div className="dashboard-card__header">
-              <div>
-                <p className="dashboard-card__eyebrow">Quick actions</p>
-                <h2>Start here</h2>
-              </div>
-            </div>
+          <DashboardCard eyebrow="Quick actions" title="Start here">
             <div className="dashboard-actions">
               <Link className="dashboard-action" to="/tickets/new">Create Ticket</Link>
               <Link className="dashboard-action" to="/">View Tickets</Link>
               <Link className="dashboard-action" to="/knowledge">Knowledge Base</Link>
               <Link className="dashboard-action" to="/">Reports</Link>
             </div>
-          </section>
+          </DashboardCard>
         </aside>
       </div>
 
       <div className="dashboard-analytics">
-        <section className="dashboard-card">
-          <div className="dashboard-card__header">
-            <div>
-              <p className="dashboard-card__eyebrow">Customer experience</p>
-              <h2>Service overview</h2>
-            </div>
-          </div>
+        <DashboardCard eyebrow="Customer experience" title="Service overview">
           <div className="dashboard-analytics__list">
             <div className="dashboard-analytics__row">
               <div className="dashboard-analytics__label"><span>Open tickets</span><strong>{summary.open}</strong></div>
@@ -663,7 +627,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </section>
+        </DashboardCard>
 
         <section className="dashboard-card">
           <div className="dashboard-card__header">

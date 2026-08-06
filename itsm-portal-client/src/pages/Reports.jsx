@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import DashboardCard from '../Components/DashboardCard'
 import ErrorBanner from '../Components/ErrorBanner'
 import LoadingSpinner from '../Components/LoadingSpinner'
 import { getDashboardReports } from '../services/dashboardService'
@@ -69,13 +70,7 @@ export default function Reports() {
           </div>
 
           <div className="report-panels">
-            <div className="dashboard-card">
-              <div className="dashboard-card__header">
-                <div>
-                  <p className="dashboard-card__eyebrow">Priority breakdown</p>
-                  <h2>Demand by urgency</h2>
-                </div>
-              </div>
+            <DashboardCard eyebrow="Priority breakdown" title="Demand by urgency">
               <div className="report-list">
                 {priorityBreakdown.map((item) => (
                   <div key={item.label} className="report-row">
@@ -89,15 +84,9 @@ export default function Reports() {
                   </div>
                 ))}
               </div>
-            </div>
+            </DashboardCard>
 
-            <div className="dashboard-card">
-              <div className="dashboard-card__header">
-                <div>
-                  <p className="dashboard-card__eyebrow">Technician workload</p>
-                  <h2>Current assignment load</h2>
-                </div>
-              </div>
+            <DashboardCard eyebrow="Technician workload" title="Current assignment load">
               <div className="report-list">
                 {technicianWorkload.map((item) => (
                   <div key={item.label} className="report-row">
@@ -111,16 +100,10 @@ export default function Reports() {
                   </div>
                 ))}
               </div>
-            </div>
+            </DashboardCard>
           </div>
 
-          <div className="dashboard-card report-table-card">
-            <div className="dashboard-card__header">
-              <div>
-                <p className="dashboard-card__eyebrow">Ticket trend</p>
-                <h2>Volume over the last week</h2>
-              </div>
-            </div>
+          <DashboardCard eyebrow="Ticket trend" title="Volume over the last week" className="report-table-card">
             <div className="report-list">
               {volumeTrend.map((item) => (
                 <div key={item.label} className="report-row">
@@ -134,15 +117,9 @@ export default function Reports() {
                 </div>
               ))}
             </div>
-          </div>
+          </DashboardCard>
 
-          <div className="dashboard-card report-table-card">
-            <div className="dashboard-card__header">
-              <div>
-                <p className="dashboard-card__eyebrow">Department trends</p>
-                <h2>Tickets by team</h2>
-              </div>
-            </div>
+          <DashboardCard eyebrow="Department trends" title="Tickets by team" className="report-table-card">
             <div className="report-list">
               {departmentBreakdown.map((item) => (
                 <div key={item.label} className="report-row">
@@ -156,7 +133,7 @@ export default function Reports() {
                 </div>
               ))}
             </div>
-          </div>
+          </DashboardCard>
         </>
       )}
     </section>

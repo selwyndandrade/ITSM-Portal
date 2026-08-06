@@ -1,23 +1,11 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import DataGrid from './DataGrid'
+import Badge from './Badge'
 import { useAuth } from '../contexts/AuthContext'
 
-function getBadgeClass(value, type) {
-  const normalized = (value || '').toString().toLowerCase()
-  if (type === 'priority') {
-    if (normalized.includes('high')) return 'dashboard-badge dashboard-badge--high'
-    if (normalized.includes('medium')) return 'dashboard-badge dashboard-badge--medium'
-    return 'dashboard-badge dashboard-badge--low'
-  }
-
-  if (type === 'status') {
-    if (normalized.includes('in progress')) return 'dashboard-badge dashboard-badge--in-progress'
-    if (normalized.includes('pending')) return 'dashboard-badge dashboard-badge--pending'
-    if (normalized.includes('resolved') || normalized.includes('closed')) return 'dashboard-badge dashboard-badge--resolved'
-    return 'dashboard-badge dashboard-badge--open'
-  }
-
-  return 'dashboard-badge'
+function formatNumber(id) {
+  return `TCK${String(id ?? 0).padStart(7, '0')}`
 }
 
 function formatDate(value) {
@@ -31,55 +19,82 @@ export default function TicketList({ tickets = [], loading, error, onAssignClick
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  if (loading) return <div className="dashboard-empty">Loading your queue…</div>
-  if (error) return <div className="dashboard-form-error">We could not refresh the queue right now. Please try again shortly.</div>
-  if (!tickets.length) return <div className="dashboard-empty">No active tickets yet. Create a request or submit a new issue to get started.</div>
-
-  const canAssign = user && ['Admin', 'Technician'].includes(user.role)
+  const canAssign = onAssignClick && user && ['Admin', 'Technician'].includes(user.role)
 
   return (
-    <div className="dashboard-table-wrap">
-      <table className="dashboard-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Ticket</th>
-            <th>Category</th>
-            <th>Priority</th>
-            <th>Status</th>
-            <th>Assigned</th>
-            <th>Created</th>
-            <th>Updated</th>
-            {canAssign ? <th>Action</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {tickets.map((ticket) => (
-            <tr key={ticket.id}>
-              <td>#{ticket.id}</td>
-              <td>
-                <button type="button" onClick={() => navigate(`/tickets/${ticket.id}`)} className="dashboard-ticket-title" style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
-                  {ticket.title || 'Untitled ticket'}
-                </button>
-                <div className="dashboard-ticket-meta">{ticket.description ? ticket.description.slice(0, 80) : 'No summary provided'}</div>
-              </td>
-              <td>{ticket.category || 'Software'}</td>
-              <td><span className={getBadgeClass(ticket.priority, 'priority')}>{ticket.priority || 'Medium'}</span></td>
-              <td><span className={getBadgeClass(ticket.status, 'status')}>{ticket.status || 'Open'}</span></td>
-              <td>{ticket.assignedTo || 'Unassigned'}</td>
-              <td>{formatDate(ticket.createdDate || ticket.createdAt)}</td>
-              <td>{formatDate(ticket.lastUpdated || ticket.updatedDate)}</td>
-              {canAssign ? (
-                <td>
-                  <button type="button" onClick={() => onAssignClick?.(ticket)} className="dashboard-table-action">
-                    Assign
-                  </button>
-                </td>
-              ) : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataGrid
+      columns={[
+        {
+          key: 'number',
+          label: 'Number',
+          sortValue: (t) => Number(t.id) || 0,
+          render: (t) => (
+            <button type="button" onClick={() => navigate(`/tickets/${t.id}`)} className="dashboard-ticket-number">
+              {formatNumber(t.id)}
+            </button>
+          )
+        },
+        {
+          key: 'ticket',
+          label: 'Ticket',
+          sortValue: (t) => (t.title || '').toLowerCase(),
+          render: (t) => (
+            <>
+              <div className="dashboard-ticket-title">{t.title || 'Untitled ticket'}</div>
+              <div className="dashboard-ticket-meta">{t.description ? t.description.slice(0, 80) : 'No summary provided'}</div>
+            </>
+          )
+        },
+        {
+          key: 'category',
+          label: 'Category',
+          sortValue: (t) => (t.category || '').toLowerCase(),
+          render: (t) => t.category || 'Software'
+        },
+        {
+          key: 'priority',
+          label: 'Priority',
+          sortValue: (t) => ({ Critical: 4, High: 3, Medium: 2, Low: 1 }[t.priority] || 0),
+          render: (t) => <Badge type="priority" value={t.priority || 'Medium'} variant="dot" />
+        },
+        {
+          key: 'status',
+          label: 'Status',
+          sortValue: (t) => (t.status || '').toLowerCase(),
+          render: (t) => t.status || 'Open'
+        },
+        {
+          key: 'assignedTo',
+          label: 'Assigned',
+          sortValue: (t) => (t.assignedTo || '').toLowerCase(),
+          render: (t) => t.assignedTo || 'Unassigned'
+        },
+        {
+          key: 'createdDate',
+          label: 'Created',
+          sortValue: (t) => new Date(t.createdDate || t.createdAt).getTime() || 0,
+          render: (t) => formatDate(t.createdDate || t.createdAt)
+        },
+        {
+          key: 'lastUpdated',
+          label: 'Updated',
+          sortValue: (t) => new Date(t.lastUpdated || t.updatedDate).getTime() || 0,
+          render: (t) => formatDate(t.lastUpdated || t.updatedDate)
+        }
+      ]}
+      rows={tickets}
+      getRowKey={(t) => t.id}
+      loading={loading}
+      error={error}
+      loadingMessage="Loading your queue..."
+      errorPrefix="Could not refresh the queue"
+      emptyTitle="No Active Tickets"
+      emptyDescription="No active tickets yet. Create a request or submit a new issue to get started."
+      initialSort={{ key: 'createdDate', dir: 'desc' }}
+      selectable={false}
+      showPagination={false}
+      pageSize={tickets.length || 1}
+      actionsColumn={canAssign ? { label: 'Action', render: (t) => <button type="button" onClick={() => onAssignClick?.(t)} className="dashboard-table-action">Assign</button> } : null}
+    />
   )
 }

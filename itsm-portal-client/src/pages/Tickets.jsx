@@ -10,9 +10,6 @@ export default function Tickets() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [priorityFilter, setPriorityFilter] = useState('')
   const [assigningFor, setAssigningFor] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
 
@@ -20,11 +17,7 @@ export default function Tickets() {
     setLoading(true)
     setError(null)
     try {
-      const res = await getTickets(1, 100, {
-        search: searchTerm.trim(),
-        status: statusFilter,
-        priority: priorityFilter
-      })
+      const res = await getTickets(1, 100)
       const items = Array.isArray(res) ? res : res.items || []
       setTickets(items)
     } catch (ex) {
@@ -37,7 +30,7 @@ export default function Tickets() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, statusFilter, priorityFilter])
+  }, [])
 
   useEffect(() => {
     const handleRefresh = () => load()
@@ -64,7 +57,7 @@ export default function Tickets() {
     <div className="dashboard-shell">
       <div className="dashboard-hero">
         <div className="dashboard-hero__content">
-          <p className="dashboard-eyebrow">TICKET QUEUE</p>
+          <p className="dashboard-eyebrow">Ticket Queue</p>
           <h1>Tickets</h1>
           <p className="dashboard-subtitle">Triage, filter, and assign every open request in one place.</p>
         </div>
@@ -77,30 +70,6 @@ export default function Tickets() {
       <ErrorBanner message={error} />
 
       <section className="dashboard-card">
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-          <input
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search tickets"
-            style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}
-          />
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}>
-            <option value="">All statuses</option>
-            <option value="Open">Open</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Pending">Pending</option>
-            <option value="Resolved">Resolved</option>
-            <option value="Closed">Closed</option>
-          </select>
-          <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)} style={{ border: '1px solid #d9d3c7', borderRadius: '0.3rem', padding: '9px 10px' }}>
-            <option value="">All priorities</option>
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-        </div>
-
         <TicketsTable tickets={tickets} loading={loading} error={null} onAssignClick={(ticket) => setAssigningFor(ticket)} />
       </section>
 

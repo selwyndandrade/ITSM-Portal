@@ -2,9 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getAssets } from '../services/assetService'
 import api from '../services/api'
+import { getErrorMessage } from '../services/ticketService'
+import DataGrid from '../Components/DataGrid'
+import ErrorBanner from '../Components/ErrorBanner'
 
 const statusOptions = ['Active', 'In Maintenance', 'Retired', 'Available', 'Deployed']
 const categoryOptions = ['Hardware', 'Software', 'Network', 'Mobile', 'Accessory']
+const statusDotColor = { Active: '#22c55e', Deployed: '#3b82f6', Available: '#0ea5e9', 'In Maintenance': '#eab308', Retired: '#94a3b8' }
 
 function formatDate(value) {
   if (!value) return '—'
@@ -13,12 +17,13 @@ function formatDate(value) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function getAssetStatusClass(value) {
-  const normalized = (value || '').toString().toLowerCase()
-  if (normalized.includes('maintenance')) return 'dashboard-badge dashboard-badge--pending'
-  if (normalized.includes('retired')) return 'dashboard-badge dashboard-badge--resolved'
-  if (normalized.includes('available')) return 'dashboard-badge dashboard-badge--low'
-  return 'dashboard-badge dashboard-badge--in-progress'
+function StatusDot({ value }) {
+  return (
+    <span className="dashboard-dot-label">
+      <span className="dashboard-dot" style={{ background: statusDotColor[value] || '#94a3b8' }} />
+      {value}
+    </span>
+  )
 }
 
 export default function Assets() {
@@ -27,11 +32,7 @@ export default function Assets() {
   const [departments, setDepartments] = useState([])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('')
-  const [status, setStatus] = useState('')
-  const [departmentId, setDepartmentId] = useState('')
-  const [assignedUserId, setAssignedUserId] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     document.title = 'Kyro Assets'
@@ -43,22 +44,25 @@ export default function Assets() {
   useEffect(() => {
     async function load() {
       setLoading(true)
+      setError(null)
       try {
         const [assetsRes, departmentsRes, usersRes] = await Promise.all([
-          getAssets({ query, category, status, departmentId: departmentId || undefined, assignedUserId: assignedUserId || undefined }),
+          getAssets({}),
           api.get('/api/users/departments'),
           api.get('/api/users')
         ])
         setAssets(assetsRes || [])
         setDepartments(departmentsRes.data || [])
         setUsers(usersRes.data || [])
+      } catch (ex) {
+        setError(getErrorMessage(ex, 'Assets could not be loaded.'))
       } finally {
         setLoading(false)
       }
     }
 
     load()
-  }, [query, category, status, departmentId, assignedUserId])
+  }, [])
 
   const metrics = useMemo(() => {
     const total = assets.length
@@ -79,12 +83,14 @@ export default function Assets() {
     <div className="asset-shell">
       <div className="asset-hero">
         <div>
-          <p className="dashboard-eyebrow">ASSET MANAGEMENT</p>
+          <p className="dashboard-eyebrow">Asset Management</p>
           <h2>Corporate asset inventory</h2>
           <p>Track hardware, ownership, warranty health, and ticket-related asset context from one workspace.</p>
         </div>
         <button type="button" className="theme-button" onClick={() => navigate('/assets/new')}>New asset</button>
       </div>
+
+      <ErrorBanner message={error} />
 
       <div className="asset-metrics">
         <div className="asset-metric"><span>Total assets</span><strong>{metrics.total}</strong></div>
@@ -96,74 +102,94 @@ export default function Assets() {
       </div>
 
       <div className="dashboard-card asset-panel">
-        <div className="dashboard-card__header asset-toolbar">
+        <div className="dashboard-card__header">
           <div>
             <p className="dashboard-card__eyebrow">Inventory</p>
             <h2>Asset list</h2>
           </div>
-          <div className="asset-filters">
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search assets" />
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">All categories</option>
-              {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All status</option>
-              {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-            <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-              <option value="">All departments</option>
-              {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-            </select>
-            <select value={assignedUserId} onChange={(e) => setAssignedUserId(e.target.value)}>
-              <option value="">All users</option>
-              {users.map((user) => <option key={user.id} value={user.id}>{user.displayName || user.email}</option>)}
-            </select>
-          </div>
         </div>
 
-        {loading ? (
-          <div className="dashboard-empty">Loading assets…</div>
-        ) : (
-          <div className="dashboard-table-wrap">
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Asset</th>
-                  <th>Type</th>
-                  <th>Serial</th>
-                  <th>Assigned</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Purchase</th>
-                  <th>Warranty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assets.map((asset) => (
-                  <tr key={asset.id}>
-                    <td>
-                      <Link to={`/assets/${asset.id}`} className="asset-link">
-                        <div className="asset-chip">{asset.name?.slice(0, 2).toUpperCase() || 'AS'}</div>
-                        <div>
-                          <div className="dashboard-ticket-title">{asset.name}</div>
-                          <div className="dashboard-ticket-meta">{asset.assetTag}</div>
-                        </div>
-                      </Link>
-                    </td>
-                    <td>{asset.category}</td>
-                    <td>{asset.serialNumber || '—'}</td>
-                    <td>{asset.assignedUserName || 'Unassigned'}</td>
-                    <td>{asset.departmentName || '—'}</td>
-                    <td><span className={getAssetStatusClass(asset.status)}>{asset.status || 'Active'}</span></td>
-                    <td>{formatDate(asset.purchaseDate)}</td>
-                    <td>{formatDate(asset.warrantyExpirationDate)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataGrid
+          columns={[
+            {
+              key: 'asset',
+              label: 'Asset',
+              filter: 'text',
+              filterText: (a) => `${a.name || ''} ${a.assetTag || ''}`,
+              sortValue: (a) => (a.name || '').toLowerCase(),
+              render: (a) => (
+                <Link to={`/assets/${a.id}`} className="asset-link">
+                  <div className="asset-chip">{a.name?.slice(0, 2).toUpperCase() || 'AS'}</div>
+                  <div>
+                    <div className="dashboard-ticket-title">{a.name}</div>
+                    <div className="dashboard-ticket-meta">{a.assetTag}</div>
+                  </div>
+                </Link>
+              )
+            },
+            {
+              key: 'category',
+              label: 'Type',
+              filter: 'select',
+              filterOptions: categoryOptions,
+              filterValue: (a) => a.category,
+              sortValue: (a) => (a.category || '').toLowerCase()
+            },
+            {
+              key: 'serialNumber',
+              label: 'Serial',
+              sortValue: (a) => (a.serialNumber || '').toLowerCase(),
+              render: (a) => a.serialNumber || '—'
+            },
+            {
+              key: 'assignedUserId',
+              label: 'Assigned',
+              filter: 'select',
+              filterOptions: users.map((u) => ({ value: u.id, label: u.displayName || u.email })),
+              filterValue: (a) => a.assignedUserId,
+              sortValue: (a) => (a.assignedUserName || '').toLowerCase(),
+              render: (a) => a.assignedUserName || 'Unassigned'
+            },
+            {
+              key: 'departmentId',
+              label: 'Department',
+              filter: 'select',
+              filterOptions: departments.map((d) => ({ value: d.id, label: d.name })),
+              filterValue: (a) => a.departmentId,
+              sortValue: (a) => (a.departmentName || '').toLowerCase(),
+              render: (a) => a.departmentName || '—'
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              filter: 'select',
+              filterOptions: statusOptions,
+              filterValue: (a) => a.status || 'Active',
+              sortValue: (a) => (a.status || '').toLowerCase(),
+              render: (a) => <StatusDot value={a.status || 'Active'} />
+            },
+            {
+              key: 'purchaseDate',
+              label: 'Purchase',
+              sortValue: (a) => new Date(a.purchaseDate).getTime() || 0,
+              render: (a) => formatDate(a.purchaseDate)
+            },
+            {
+              key: 'warrantyExpirationDate',
+              label: 'Warranty',
+              sortValue: (a) => new Date(a.warrantyExpirationDate).getTime() || 0,
+              render: (a) => formatDate(a.warrantyExpirationDate)
+            }
+          ]}
+          rows={assets}
+          getRowKey={(a) => a.id}
+          loading={loading}
+          loadingMessage="Loading assets..."
+          emptyTitle="No Assets"
+          emptyDescription="There are no assets to display."
+          noMatchMessage="No assets match these filters."
+          initialSort={{ key: 'asset', dir: 'asc' }}
+        />
       </div>
     </div>
   )

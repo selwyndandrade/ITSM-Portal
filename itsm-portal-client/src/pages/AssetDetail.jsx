@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { assignAsset, getAsset } from '../services/assetService'
 import api from '../services/api'
+import { getErrorMessage } from '../services/ticketService'
 
 function formatDate(value) {
   if (!value) return '—'
@@ -22,6 +23,7 @@ export default function AssetDetail() {
   const { id } = useParams()
   const [asset, setAsset] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [users, setUsers] = useState([])
   const [selectedUserId, setSelectedUserId] = useState('')
   const [assignmentNote, setAssignmentNote] = useState('')
@@ -30,10 +32,16 @@ export default function AssetDetail() {
 
   async function load() {
     setLoading(true)
-    const data = await getAsset(id)
-    setAsset(data)
-    setSelectedUserId(data.assignedUserId || '')
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await getAsset(id)
+      setAsset(data)
+      setSelectedUserId(data.assignedUserId || '')
+    } catch (ex) {
+      setError(getErrorMessage(ex, 'Failed to load asset. Please try again.'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -70,6 +78,7 @@ export default function AssetDetail() {
   }
 
   if (loading) return <div className="dashboard-empty">Loading asset…</div>
+  if (error) return <div className="dashboard-empty" style={{ color: '#b00020' }}>{error}</div>
   if (!asset) return <div className="dashboard-empty">Asset not found.</div>
 
   return (

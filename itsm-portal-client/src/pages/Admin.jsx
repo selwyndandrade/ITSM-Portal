@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import DataGrid from '../Components/DataGrid'
 import ErrorBanner from '../Components/ErrorBanner'
 import LoadingSpinner from '../Components/LoadingSpinner'
 import RoleGuard from '../Components/RoleGuard'
@@ -12,7 +13,6 @@ import { resolveApiUrl } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 
 const roleOptions = ['Admin', 'Technician', 'Employee']
-const statusOptions = ['All', 'Active', 'Inactive']
 
 function formatDate(value) {
   if (!value) return 'Never'
@@ -41,15 +41,9 @@ export default function Admin() {
   const [users, setUsers] = useState([])
   const [departments, setDepartments] = useState([])
   const [tickets, setTickets] = useState([])
-  const [roleFilter, setRoleFilter] = useState('All')
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [sortConfig, setSortConfig] = useState({ key: 'displayName', direction: 'asc' })
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(8)
-  const [selectedUserIds, setSelectedUserIds] = useState([])
+  const [selectedUserIds, setSelectedUserIds] = useState(() => new Set())
   const [detailUser, setDetailUser] = useState(null)
   const [bulkRole, setBulkRole] = useState('Technician')
   const [bulkDepartmentId, setBulkDepartmentId] = useState('')
@@ -142,46 +136,12 @@ export default function Admin() {
     return () => { active = false }
   }, [])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [roleFilter, statusFilter, searchQuery, pageSize])
-
   const departmentLookup = useMemo(() => {
     return departments.reduce((acc, department) => {
       acc[department.id] = department
       return acc
     }, {})
   }, [departments])
-
-  const filteredUsers = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    return users.filter((user) => {
-      const matchesRole = roleFilter === 'All' || user.role === roleFilter
-      const matchesStatus = statusFilter === 'All' || (statusFilter === 'Active' ? user.isActive !== false : user.isActive === false)
-      const departmentName = departmentLookup[user.departmentId]?.name || ''
-      const searchText = `${user.displayName || ''} ${user.email || ''} ${user.role || ''} ${departmentName}`.toLowerCase()
-      const matchesQuery = !query || searchText.includes(query)
-      return matchesRole && matchesStatus && matchesQuery
-    })
-  }, [departmentLookup, roleFilter, searchQuery, statusFilter, users])
-
-  const sortedUsers = useMemo(() => {
-    const items = [...filteredUsers]
-    items.sort((left, right) => {
-      const leftValue = left[sortConfig.key] ?? ''
-      const rightValue = right[sortConfig.key] ?? ''
-      const comparison = String(leftValue).localeCompare(String(rightValue), undefined, { sensitivity: 'base' })
-      return sortConfig.direction === 'asc' ? comparison : -comparison
-    })
-    return items
-  }, [filteredUsers, sortConfig])
-
-  const pagedUsers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return sortedUsers.slice(start, start + pageSize)
-  }, [currentPage, pageSize, sortedUsers])
-
-  const pageCount = Math.max(1, Math.ceil(sortedUsers.length / pageSize))
 
   const stats = useMemo(() => {
     const activeUsers = users.filter((user) => user.isActive !== false).length
@@ -248,10 +208,11 @@ export default function Admin() {
   }
 
   async function handleBulkApply() {
-    if (!selectedUserIds.length) return
+    if (!selectedUserIds.size) return
+    const targetIds = Array.from(selectedUserIds)
 
     try {
-      await Promise.all(selectedUserIds.map((userId) => {
+      await Promise.all(targetIds.map((userId) => {
         const user = users.find((item) => item.id === userId)
         const updates = []
         if (user?.role !== bulkRole) updates.push(api.put(`/api/users/${userId}/role`, bulkRole))
@@ -261,7 +222,7 @@ export default function Admin() {
       }))
 
       setUsers((current) => current.map((user) => {
-        if (!selectedUserIds.includes(user.id)) return user
+        if (!selectedUserIds.has(user.id)) return user
         return {
           ...user,
           role: bulkRole,
@@ -269,24 +230,11 @@ export default function Admin() {
           isActive: bulkActive
         }
       }))
-      setAuditLog((current) => [{ id: Date.now(), action: 'Bulk update', detail: `${selectedUserIds.length} users changed` }, ...current].slice(0, 8))
-      setSelectedUserIds([])
+      setAuditLog((current) => [{ id: Date.now(), action: 'Bulk update', detail: `${targetIds.length} users changed` }, ...current].slice(0, 8))
+      setSelectedUserIds(new Set())
     } catch (ex) {
       setError(getErrorMessage(ex, 'Bulk update failed.'))
     }
-  }
-
-  function handleSort(key) {
-    setSortConfig((current) => {
-      if (current.key === key) {
-        return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
-      }
-      return { key, direction: 'asc' }
-    })
-  }
-
-  function toggleSelectedUser(userId) {
-    setSelectedUserIds((current) => current.includes(userId) ? current.filter((value) => value !== userId) : [...current, userId])
   }
 
   async function handleSetupSubmit(event) {
@@ -317,11 +265,6 @@ export default function Admin() {
     } finally {
       setSetupSaving(false)
     }
-  }
-
-  function selectAllVisible() {
-    const visibleIds = pagedUsers.map((user) => user.id)
-    setSelectedUserIds((current) => current.length === visibleIds.length ? [] : visibleIds)
   }
 
   async function handleBrandingSubmit(event) {
@@ -441,6 +384,7 @@ export default function Admin() {
       </div>
 
       <div className="admin-workspace">
+        <RoleGuard roles="PlatformAdmin">
         <div className="dashboard-card admin-panel admin-panel--wide">
           <div className="dashboard-card__header">
             <div>
@@ -513,6 +457,7 @@ export default function Admin() {
             </form>
           ) : null}
         </div>
+        </RoleGuard>
 
         <div className="dashboard-card admin-panel admin-panel--wide">
           <div className="dashboard-card__header">
@@ -632,28 +577,14 @@ export default function Admin() {
         <div className="dashboard-card admin-panel admin-panel--wide">
           <div className="dashboard-card__header">
             <div>
-              <p className="dashboard-card__eyebrow">User management</p>
+              <p className="dashboard-card__eyebrow">User Management</p>
               <h2>Team access</h2>
-            </div>
-            <div className="admin-toolbar">
-              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search users" />
-              <select className="dashboard-filter" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
-                <option value="All">All roles</option>
-                {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-              </select>
-              <select className="dashboard-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-              </select>
             </div>
           </div>
 
           <div className="admin-bulk-bar">
             <div className="admin-bulk-bar__left">
-              <label className="admin-toggle">
-                <input type="checkbox" checked={selectedUserIds.length > 0 && selectedUserIds.length === pagedUsers.length} onChange={selectAllVisible} />
-                Select visible
-              </label>
-              <span>{selectedUserIds.length} selected</span>
+              <span>{selectedUserIds.size} Selected</span>
             </div>
             <div className="admin-bulk-actions">
               <select value={bulkRole} onChange={(event) => setBulkRole(event.target.value)}>
@@ -667,84 +598,94 @@ export default function Admin() {
                 <input type="checkbox" checked={bulkActive} onChange={(event) => setBulkActive(event.target.checked)} />
                 Active
               </label>
-              <button className="secondary-button" onClick={handleBulkApply} disabled={!selectedUserIds.length}>Apply</button>
+              <button className="secondary-button" onClick={handleBulkApply} disabled={!selectedUserIds.size}>Apply</button>
             </div>
           </div>
 
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th><button onClick={() => handleSort('displayName')}>Name</button></th>
-                  <th><button onClick={() => handleSort('email')}>Email</button></th>
-                  <th><button onClick={() => handleSort('role')}>Role</button></th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Last login</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagedUsers.map((user) => {
-                  const department = departmentLookup[user.departmentId]
+          <DataGrid
+            columns={[
+              {
+                key: 'name',
+                label: 'Name',
+                filter: 'text',
+                filterText: (user) => `${user.displayName || ''} ${user.email || ''} ${user.role || ''} ${departmentLookup[user.departmentId]?.name || ''}`,
+                sortValue: (user) => (user.displayName || user.email || '').toLowerCase(),
+                render: (user) => {
                   const avatarUrl = getAvatarUrl(user)
                   return (
-                    <tr key={user.id}>
-                      <td>
-                        <input type="checkbox" checked={selectedUserIds.includes(user.id)} onChange={() => toggleSelectedUser(user.id)} />
-                      </td>
-                      <td>
-                        <div className="admin-user-cell">
-                          {avatarUrl ? <img className="admin-user-cell__avatar" src={avatarUrl} alt={user.displayName || user.email} /> : <div className="admin-user-cell__avatar admin-user-cell__avatar--fallback">{getInitials(user)}</div>}
-                          <div>
-                            <strong>{user.displayName || user.email}</strong>
-                            <div className="admin-user-cell__meta">{user.jobTitle || 'Workspace user'}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>{user.email}</td>
-                      <td>
-                        <select value={user.role || 'Employee'} onChange={(event) => updateRole(user.id, event.target.value)}>
-                          {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-                        </select>
-                      </td>
-                      <td>
-                        <select value={user.departmentId || ''} onChange={(event) => updateDepartment(user.id, Number(event.target.value))}>
-                          <option value="">Unassigned</option>
-                          {departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
-                        </select>
-                      </td>
-                      <td>
-                        <label className="admin-toggle">
-                          <input type="checkbox" checked={user.isActive !== false} onChange={(event) => toggleActive(user.id, event.target.checked)} />
-                          {user.isActive !== false ? 'Active' : 'Inactive'}
-                        </label>
-                      </td>
-                      <td>{formatDate(user.lastLoginAt || user.lastLogin || user.lastSeenAt)}</td>
-                      <td>
-                        <button className="secondary-button secondary-button--compact" onClick={() => setDetailUser(user)}>View</button>
-                      </td>
-                    </tr>
+                    <div className="admin-user-cell">
+                      {avatarUrl ? <img className="admin-user-cell__avatar" src={avatarUrl} alt={user.displayName || user.email} /> : <div className="admin-user-cell__avatar admin-user-cell__avatar--fallback">{getInitials(user)}</div>}
+                      <div>
+                        <strong>{user.displayName || user.email}</strong>
+                        <div className="admin-user-cell__meta">{user.jobTitle || 'Workspace user'}</div>
+                      </div>
+                    </div>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="admin-pagination">
-            <span>Showing {sortedUsers.length ? (currentPage - 1) * pageSize + 1 : 0}-{Math.min(currentPage * pageSize, sortedUsers.length)} of {sortedUsers.length}</span>
-            <div className="admin-pagination__controls">
-              <button className="secondary-button secondary-button--compact" onClick={() => setCurrentPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}>Prev</button>
-              <span>Page {currentPage} of {pageCount}</span>
-              <button className="secondary-button secondary-button--compact" onClick={() => setCurrentPage((value) => Math.min(pageCount, value + 1))} disabled={currentPage === pageCount}>Next</button>
-              <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-                <option value={6}>6 per page</option>
-                <option value={8}>8 per page</option>
-                <option value={12}>12 per page</option>
-              </select>
-            </div>
-          </div>
+                }
+              },
+              {
+                key: 'email',
+                label: 'Email',
+                sortValue: (user) => (user.email || '').toLowerCase(),
+                render: (user) => user.email
+              },
+              {
+                key: 'role',
+                label: 'Role',
+                filter: 'select',
+                filterOptions: roleOptions,
+                filterValue: (user) => user.role || 'Employee',
+                sortValue: (user) => (user.role || '').toLowerCase(),
+                render: (user) => (
+                  <select value={user.role || 'Employee'} onChange={(event) => updateRole(user.id, event.target.value)}>
+                    {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+                  </select>
+                )
+              },
+              {
+                key: 'department',
+                label: 'Department',
+                sortValue: (user) => (departmentLookup[user.departmentId]?.name || '').toLowerCase(),
+                render: (user) => (
+                  <select value={user.departmentId || ''} onChange={(event) => updateDepartment(user.id, Number(event.target.value))}>
+                    <option value="">Unassigned</option>
+                    {departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
+                  </select>
+                )
+              },
+              {
+                key: 'status',
+                label: 'Status',
+                filter: 'select',
+                filterOptions: ['Active', 'Inactive'],
+                filterValue: (user) => (user.isActive !== false ? 'Active' : 'Inactive'),
+                sortValue: (user) => (user.isActive !== false ? 1 : 0),
+                render: (user) => (
+                  <label className="admin-toggle">
+                    <input type="checkbox" checked={user.isActive !== false} onChange={(event) => toggleActive(user.id, event.target.checked)} />
+                    {user.isActive !== false ? 'Active' : 'Inactive'}
+                  </label>
+                )
+              },
+              {
+                key: 'lastLogin',
+                label: 'Last Login',
+                sortValue: (user) => new Date(user.lastLoginAt || user.lastLogin || user.lastSeenAt).getTime() || 0,
+                render: (user) => formatDate(user.lastLoginAt || user.lastLogin || user.lastSeenAt)
+              }
+            ]}
+            rows={users}
+            getRowKey={(user) => user.id}
+            loading={false}
+            emptyTitle="No Users"
+            emptyDescription="There are no users in this workspace yet."
+            noMatchMessage="No users match these filters."
+            initialSort={{ key: 'name', dir: 'asc' }}
+            pageSize={8}
+            selectedIds={selectedUserIds}
+            onSelectionChange={setSelectedUserIds}
+            actionsColumn={{ label: 'Actions', render: (user) => <button className="secondary-button secondary-button--compact" onClick={() => setDetailUser(user)}>View</button> }}
+          />
         </div>
 
         <div className="admin-side-stack">
