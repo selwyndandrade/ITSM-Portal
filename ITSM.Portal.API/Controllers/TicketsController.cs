@@ -21,20 +21,30 @@ namespace ITSM.Portal.API.Controllers
         private readonly AutomationEngineService _automationEngine;
         private readonly TenantContextService _tenantContext;
         private readonly AuditLogService _auditLog;
+        private readonly ILogger<TicketsController> _logger;
 
+        // Shared by UpdateTicket and UpdateTicketStatus so both endpoints enforce the exact same
+        // whitelist - previously UpdateTicket set Status from the client with no validation at
+        // all, silently corrupting status-based dashboard/SLA aggregates with arbitrary strings.
+        private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Open", "Assigned", "In Progress", "Pending", "Resolved", "Closed"
+        };
 
         public TicketsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             AutomationEngineService automationEngine,
             TenantContextService tenantContext,
-            AuditLogService auditLog)
+            AuditLogService auditLog,
+            ILogger<TicketsController> logger)
         {
             _context = context;
             _userManager = userManager;
             _automationEngine = automationEngine;
             _tenantContext = tenantContext;
             _auditLog = auditLog;
+            _logger = logger;
         }
 
 
@@ -238,9 +248,9 @@ namespace ITSM.Portal.API.Controllers
                 // attach to response via an anonymous wrapper
                 return Ok(new { ticket = dto, history = histories });
             }
-            catch
+            catch (Exception ex)
             {
-                // If history fails, still return ticket
+                _logger.LogError(ex, "Failed to load history while fetching ticket {TicketId}; returning ticket without history", ticket.Id);
                 return Ok(new { ticket = dto, history = new List<TicketHistoryDto>() });
             }
         }
@@ -261,6 +271,18 @@ namespace ITSM.Portal.API.Controllers
         {
             // Capture the logged-in user from JWT
             var user = await _userManager.GetUserAsync(User);
+
+            if (model.AssetId.HasValue)
+            {
+                // A client-supplied AssetId must belong to the caller's own org, or a ticket could
+                // reference (and leak, via Include(t => t.Asset)) another tenant's asset details.
+                var assetBelongsToOrg = await _tenantContext.ApplyOrganizationFilter(_context.Assets)
+                    .AnyAsync(a => a.Id == model.AssetId.Value);
+                if (!assetBelongsToOrg)
+                {
+                    return BadRequest(new { message = "The specified asset was not found." });
+                }
+            }
 
             // Only whitelisted fields are accepted from the client - the ticket is otherwise
             // built server-side so a caller can't set Status, AssignedTo, OrganizationId, the
@@ -308,9 +330,11 @@ namespace ITSM.Portal.API.Controllers
                 _context.TicketHistories.Add(history);
                 await _context.SaveChangesAsync();
             }
-            catch
+            catch (Exception ex)
             {
-                // Swallow history errors to avoid breaking primary flow
+                // Swallow history errors to avoid breaking primary flow - but log so a real
+                // problem (e.g. a broken FK) doesn't just silently stop recording history forever.
+                _logger.LogError(ex, "Failed to record creation history for ticket {TicketId}", ticket.Id);
             }
 
             // Build DTO to return
@@ -350,14 +374,15 @@ namespace ITSM.Portal.API.Controllers
                 var histories = await _context.TicketHistories
                     .Where(h => h.TicketId == id)
                     .OrderByDescending(h => h.CreatedDate)
+                    .Take(200)
                     .Select(h => new TicketHistoryDto { Id = h.Id, Action = h.Action, Details = h.Details, CreatedBy = h.CreatedBy, CreatedDate = h.CreatedDate })
                     .ToListAsync();
 
                 return Ok(histories);
             }
-            catch
+            catch (Exception ex)
             {
-                // If the history table doesn't exist or another error occurs, return an empty list
+                _logger.LogError(ex, "Failed to load ticket history for ticket {TicketId}", id);
                 return Ok(new List<TicketHistoryDto>());
             }
         }
@@ -415,8 +440,9 @@ namespace ITSM.Portal.API.Controllers
                     byPriority
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to compute ticket stats");
                 // Return empty stats on error
                 return Ok(new
                 {
@@ -451,7 +477,13 @@ namespace ITSM.Portal.API.Controllers
                 return NotFound();
             }
 
-
+            // The assignee must belong to the ticket's own org, or the ticket (and the
+            // "ticket assigned" notification below) would cross tenant boundaries.
+            var assigneeUser = await _userManager.FindByIdAsync(userId);
+            if (assigneeUser == null || assigneeUser.OrganizationId != ticket.OrganizationId)
+            {
+                return BadRequest(new { message = "Assignee must belong to the same organization as the ticket." });
+            }
 
             ticket.AssignedTo = userId;
 
@@ -487,8 +519,9 @@ namespace ITSM.Portal.API.Controllers
                         ticket.Id);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to record assignment history/notification for ticket {TicketId}", ticket.Id);
             }
 
 
@@ -529,6 +562,20 @@ namespace ITSM.Portal.API.Controllers
                 return NotFound();
             }
 
+            if (!string.IsNullOrWhiteSpace(ticket.Status) && !AllowedStatuses.Contains(ticket.Status))
+            {
+                return BadRequest(new { message = "Invalid ticket status" });
+            }
+
+            if (ticket.AssetId.HasValue && ticket.AssetId != existingTicket.AssetId)
+            {
+                var assetBelongsToOrg = await _tenantContext.ApplyOrganizationFilter(_context.Assets)
+                    .AnyAsync(a => a.Id == ticket.AssetId.Value);
+                if (!assetBelongsToOrg)
+                {
+                    return BadRequest(new { message = "The specified asset was not found." });
+                }
+            }
 
             existingTicket.Title = ticket.Title;
             existingTicket.Description = ticket.Description;
@@ -574,8 +621,9 @@ namespace ITSM.Portal.API.Controllers
                 _context.TicketHistories.Add(history);
                 await _context.SaveChangesAsync();
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to record update history for ticket {TicketId}", existingTicket.Id);
             }
 
 
@@ -601,18 +649,7 @@ namespace ITSM.Portal.API.Controllers
             }
 
 
-            var allowedStatuses = new[]
-            {
-        "Open",
-        "Assigned",
-        "In Progress",
-        "Pending",
-        "Resolved",
-        "Closed"
-    };
-
-
-            if (!allowedStatuses.Contains(status))
+            if (string.IsNullOrWhiteSpace(status) || !AllowedStatuses.Contains(status))
             {
                 return BadRequest(new
                 {
@@ -673,8 +710,9 @@ namespace ITSM.Portal.API.Controllers
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to record status-change history/notification for ticket {TicketId}", ticket.Id);
             }
 
 
@@ -724,8 +762,9 @@ namespace ITSM.Portal.API.Controllers
                 _context.TicketHistories.Add(history);
                 await _context.SaveChangesAsync();
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to record deletion history for ticket {TicketId}", ticket.Id);
             }
 
 

@@ -36,6 +36,15 @@ namespace ITSM.Portal.API.Controllers
                 .Include(r => r.Ticket)
                 .AsQueryable();
 
+            // This endpoint backs the "My Requests" page - a plain employee should only ever see
+            // their own requests. Admin/Manager (the same roles that can approve/reject) get the
+            // full org view, matching what the dedicated approval queue below already allows them.
+            if (!User.IsInRole("Admin") && !User.IsInRole("Manager"))
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                query = query.Where(r => r.RequestedByUserId == currentUser!.Id);
+            }
+
             if (!string.IsNullOrWhiteSpace(status))
             {
                 query = query.Where(r => r.Status == status);
@@ -43,6 +52,10 @@ namespace ITSM.Portal.API.Controllers
 
             var items = await query
                 .OrderByDescending(r => r.CreatedDate)
+                // Bounded rather than paginated: this endpoint returns a bare array today and
+                // both callers (the "My Requests" page and the global search index) expect that
+                // shape, so this caps worst-case query/response size without a breaking API change.
+                .Take(500)
                 .Select(r => new
                 {
                     id = r.Id,
@@ -63,6 +76,7 @@ namespace ITSM.Portal.API.Controllers
         }
 
         [HttpGet("approvals")]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> GetApprovals([FromQuery] string? status, [FromQuery] string? requester, [FromQuery] string? department, [FromQuery] string? requestType)
         {
             var query = _tenantContext.ApplyOrganizationFilter(_context.ServiceRequests)
@@ -96,6 +110,7 @@ namespace ITSM.Portal.API.Controllers
 
             var items = await query
                 .OrderByDescending(r => r.CreatedDate)
+                .Take(500)
                 .Select(r => new
                 {
                     id = r.Id,
@@ -122,6 +137,7 @@ namespace ITSM.Portal.API.Controllers
         }
 
         [HttpGet("approvals/{id}")]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> GetApprovalDetails(int id)
         {
             var request = await _tenantContext.ApplyOrganizationFilter(_context.ServiceRequests)

@@ -132,7 +132,20 @@ public class MultiTenantDataIsolationTests
             new ServiceRequest { Id = 2, CatalogItemId = 1, Status = "Submitted", ApprovalStatus = "Pending", OrganizationId = 2 });
         await context.SaveChangesAsync();
 
-        var controller = new ServiceRequestsController(context, null!, TenantContextFor(1), null!);
+        var controller = new ServiceRequestsController(context, null!, TenantContextFor(1), null!)
+        {
+            // GetServiceRequests only bypasses the "requester's own requests" narrowing for
+            // Admin/Manager - give the controller's own User the same Admin role TenantContextFor
+            // grants its (separate) HttpContextAccessor, so this test still exercises the
+            // org-isolation behavior it's named for rather than the newer per-requester narrowing.
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "Admin") }, "Test"))
+                }
+            }
+        };
         var result = await controller.GetServiceRequests(null);
         var items = ItemsFrom(result);
 

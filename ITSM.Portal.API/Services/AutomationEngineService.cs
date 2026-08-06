@@ -314,7 +314,7 @@ namespace ITSM.Portal.API.Services
             switch (recipientType)
             {
                 case "Manager":
-                    targetUserIds.AddRange(await ResolveManagerUserIdsAsync());
+                    targetUserIds.AddRange(await ResolveManagerUserIdsAsync(rule.OrganizationId));
                     break;
                 case "Requester":
                     if (entity is ServiceRequest request && !string.IsNullOrWhiteSpace(request.RequestedByUserId))
@@ -375,9 +375,14 @@ namespace ITSM.Portal.API.Services
             return $"Notification sent to {targetUserIds.Count} recipient(s)";
         }
 
-        private async Task<List<string>> ResolveManagerUserIdsAsync()
+        private async Task<List<string>> ResolveManagerUserIdsAsync(int? organizationId)
         {
-            var users = await _context.Users.Where(u => u.Role == "Admin" || u.Role == "Technician").Select(u => u.Id).ToListAsync();
+            // Automation rules are org-scoped, so the managers notified must be too - otherwise a
+            // rule in one tenant fans notifications out to every Admin/Technician on the platform.
+            var users = await _context.Users
+                .Where(u => u.OrganizationId == organizationId && (u.Role == "Admin" || u.Role == "Technician"))
+                .Select(u => u.Id)
+                .ToListAsync();
             return users.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 

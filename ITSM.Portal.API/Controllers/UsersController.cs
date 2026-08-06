@@ -98,7 +98,20 @@ namespace ITSM.Portal.API.Controllers
             var user = await FindTenantUserAsync(id);
             if (user is null) return NotFound();
 
-            user.DepartmentId = departmentId;
+            // 0/negative means "unassigned" from the client (Number('') on an empty select).
+            // Anything else must resolve to a real department in the user's own org, or an Admin
+            // could link a user to another tenant's department record.
+            if (departmentId > 0)
+            {
+                var departmentInOrg = await _tenantContext.ApplyOrganizationFilter(_context.Departments)
+                    .AnyAsync(d => d.Id == departmentId);
+                if (!departmentInOrg)
+                {
+                    return BadRequest(new { message = "Department must belong to the same organization as the user." });
+                }
+            }
+
+            user.DepartmentId = departmentId > 0 ? departmentId : null;
             await _userManager.UpdateAsync(user);
             await _auditLog.WriteAsync("UserDepartmentChanged", $"User '{user.Email}' department changed to {departmentId}", "User", null);
             return Ok(new { id, departmentId });

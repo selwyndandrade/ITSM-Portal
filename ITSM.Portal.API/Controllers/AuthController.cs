@@ -69,24 +69,20 @@ namespace ITSM.Portal.API.Controllers
             // Without this, new users end up with OrganizationId = null, which the tenant
             // filter treats as "belongs to no organization" and hides all org-scoped data
             // from them (tickets, assets, notifications, etc.).
-            var emailDomain = model.Email.Split('@').LastOrDefault()?.ToLowerInvariant();
+            //
+            // Deliberately NOT matching by email domain against existing users: without email
+            // verification (there is no email-sending service wired up yet - see README_SAAS.md's
+            // SendGrid key, which is documented but not actually used anywhere), that would let
+            // anyone self-register with `whoever@victim-company.com` and be auto-joined straight
+            // into that company's tenant with no proof they own the address. Until real invite
+            // tokens or email confirmation exist, the only safe auto-join is the single-tenant
+            // case below; everyone else falls through to the "an administrator must assign your
+            // account" path, which already existed for this fallback.
             int? matchedOrganizationId = null;
-
-            if (!string.IsNullOrEmpty(emailDomain))
+            var organizationCount = await _context.Organizations.CountAsync();
+            if (organizationCount == 1)
             {
-                matchedOrganizationId = await _context.Users
-                    .Where(u => u.OrganizationId != null && u.Email != null && u.Email.ToLower().EndsWith("@" + emailDomain))
-                    .Select(u => u.OrganizationId)
-                    .FirstOrDefaultAsync();
-            }
-
-            if (matchedOrganizationId == null)
-            {
-                var organizationCount = await _context.Organizations.CountAsync();
-                if (organizationCount == 1)
-                {
-                    matchedOrganizationId = await _context.Organizations.Select(o => (int?)o.Id).FirstAsync();
-                }
+                matchedOrganizationId = await _context.Organizations.Select(o => (int?)o.Id).FirstAsync();
             }
 
             var user = new ApplicationUser
@@ -254,9 +250,18 @@ namespace ITSM.Portal.API.Controllers
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
                 new Claim(ClaimTypes.Role, user.Role),
-                new Claim("organization_id", user.OrganizationId?.ToString() ?? "0"),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
+
+            // Omit the claim entirely for org-less users rather than defaulting to "0" -
+            // TenantContextService.CurrentOrganizationId/ApplyOrganizationFilter treat a *missing*
+            // claim as "fail closed, see nothing" for any non-platform-admin, but a claim value of
+            // "0" parses successfully and defeats that check. This only holds because no real
+            // Organization has Id 0; don't reintroduce the sentinel.
+            if (user.OrganizationId.HasValue)
+            {
+                claims.Add(new Claim("organization_id", user.OrganizationId.Value.ToString()));
+            }
 
             var jwtKey = _configuration["Jwt:Key"];
             if (string.IsNullOrWhiteSpace(jwtKey))

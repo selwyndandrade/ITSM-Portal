@@ -270,6 +270,11 @@ namespace ITSM.Portal.API.Controllers
                 .FirstOrDefaultAsync(a => a.Id == id);
             if (asset == null) return NotFound();
 
+            if (!await ReferencesBelongToOrganizationAsync(null, request.AssignedUserId, asset.OrganizationId))
+            {
+                return BadRequest(new { message = "Assigned user must belong to the same organization as the asset." });
+            }
+
             var previousUser = asset.AssignedUserId;
             asset.AssignedUserId = request.AssignedUserId;
             asset.UpdatedDate = DateTime.UtcNow;

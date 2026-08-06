@@ -27,6 +27,9 @@ namespace ITSM.Portal.API.Services
                 articles = articles.Where(a => a.Category == category.Trim());
 
             return await articles.OrderByDescending(a => a.UpdatedDate ?? a.CreatedDate)
+                // Bounded rather than paginated - the client renders this as a single card grid
+                // with no pager, so this just caps worst-case query/response size.
+                .Take(500)
                 .Select(a => new KnowledgeArticleDTO { Id = a.Id, Title = a.Title, Content = a.Content, Category = a.Category, CreatedBy = a.CreatedBy, CreatedDate = a.CreatedDate, UpdatedDate = a.UpdatedDate })
                 .ToListAsync(cancellationToken);
         }

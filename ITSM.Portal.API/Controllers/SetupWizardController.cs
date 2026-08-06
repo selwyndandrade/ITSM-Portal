@@ -7,7 +7,10 @@ namespace ITSM.Portal.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")]
+    // Same reasoning as OrganizationsController: provisioning a brand-new organization is a
+    // platform-level operation and must never be reachable by an ordinary tenant Admin, or any
+    // customer could self-service-create arbitrary new tenants/admins.
+    [Authorize(Roles = "PlatformAdmin")]
     public class SetupWizardController : ControllerBase
     {
         private readonly SetupWizardService _setupWizardService;

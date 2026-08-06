@@ -16,12 +16,14 @@ namespace ITSM.Portal.API.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly TenantContextService _tenantContext;
+        private readonly ILogger<NotificationsController> _logger;
 
-        public NotificationsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, TenantContextService tenantContext)
+        public NotificationsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, TenantContextService tenantContext, ILogger<NotificationsController> logger)
         {
             _context = context;
             _userManager = userManager;
             _tenantContext = tenantContext;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -50,8 +52,9 @@ namespace ITSM.Portal.API.Controllers
 
                 return Ok(notifications);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load notifications for user {UserId}", user.Id);
                 return Ok(Array.Empty<object>());
             }
         }
